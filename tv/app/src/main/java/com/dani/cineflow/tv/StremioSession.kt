@@ -319,6 +319,24 @@ object StremioSession {
         return putDatastore(payload, "Añadido a tu biblioteca")
     }
 
+    fun clearContinueProgress(context: Context, id: String) {
+        val auth = authKey(context) ?: return
+        try {
+            val existing = libraryRaw(context).firstOrNull { it.optString("_id") == id } ?: return
+            val state = existing.optJSONObject("state") ?: JSONObject()
+            state.put("timeOffset", 0)
+            state.put("lastWatched", "")
+            existing.put("state", state)
+            existing.put("removed", false)
+            existing.put("temp", false)
+            existing.put("_mtime", nowIso())
+            putDatastore(JSONObject()
+                .put("authKey", auth)
+                .put("collection", "libraryItem")
+                .put("changes", JSONArray().put(existing)), null)
+        } catch (_: Exception) { /* local removal still wins */ }
+    }
+
     fun removeFromLibrary(context: Context, id: String): Pair<Boolean, String> {
         val auth = authKey(context) ?: return false to "Vincula tu cuenta primero."
         val existing = libraryRaw(context).firstOrNull { it.optString("_id") == id }

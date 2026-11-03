@@ -86,6 +86,17 @@ object NativeProgressStore {
 
     fun get(context: Context, id: String): Entry? = list(context).firstOrNull { it.id == id }
 
+    fun remove(context: Context, id: String) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val items = try { JSONArray(prefs.getString(KEY, "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
+        val kept = JSONArray()
+        for (i in 0 until items.length()) {
+            val o = items.optJSONObject(i) ?: continue
+            if (o.optString("id") != id) kept.put(o)
+        }
+        prefs.edit().putString(KEY, kept.toString()).apply()
+    }
+
     private fun seasonFrom(videoId: String): Int = videoId.split(':').let { p -> if (p.size >= 3) p[p.size - 2].toIntOrNull() ?: 0 else 0 }
     private fun episodeFrom(videoId: String): Int = videoId.split(':').let { p -> if (p.size >= 3) p[p.size - 1].toIntOrNull() ?: 0 else 0 }
 

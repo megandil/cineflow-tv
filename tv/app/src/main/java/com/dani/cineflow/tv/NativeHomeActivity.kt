@@ -12,8 +12,10 @@ import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.app.AlertDialog
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Toast
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
@@ -89,6 +91,19 @@ class NativeHomeActivity : AppCompatActivity() {
             loadingOverlay = null
             loadingStatus = null
             return true
+        }
+        if (event.action == android.view.KeyEvent.ACTION_DOWN &&
+            (event.keyCode == android.view.KeyEvent.KEYCODE_MENU || event.keyCode == android.view.KeyEvent.KEYCODE_SETTINGS)
+        ) {
+            var view: View? = currentFocus
+            while (view != null) {
+                val meta = view.tag as? Meta
+                if (meta != null) {
+                    askRemoveFromContinue(meta)
+                    return true
+                }
+                view = view.parent as? View
+            }
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
             val focus = currentFocus
@@ -381,6 +396,22 @@ class NativeHomeActivity : AppCompatActivity() {
         for (row in railRows) row.setNextFocusRightId(heroPlay.id)
     }
 
+    private fun askRemoveFromContinue(meta: Meta) {
+        AlertDialog.Builder(this)
+            .setTitle("Continuar viendo")
+            .setMessage("¿Quitar «${meta.name}» de Continuar viendo?")
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton("QUITAR") { _, _ ->
+                NativeProgressStore.remove(this, meta.id)
+                Toast.makeText(this, "Quitado de Continuar viendo", Toast.LENGTH_SHORT).show()
+                thread(name = "cineflow-clear-progress", isDaemon = true) {
+                    StremioSession.clearContinueProgress(this, meta.id)
+                    runOnUiThread { loadCatalogs() }
+                }
+            }
+            .show()
+    }
+
     private fun section(number: String, title: String, list: List<Meta>, type: String, autoResume: Boolean = false): View {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val head = LinearLayout(this).apply {
@@ -551,6 +582,7 @@ class NativeHomeActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val meta = items[position]
+            holder.card.tag = if (autoResume) meta else null
             holder.name.text = meta.name
             holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("   ")
             NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 3)
