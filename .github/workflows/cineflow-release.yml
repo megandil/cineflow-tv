@@ -51,10 +51,10 @@ jobs:
           ./gradlew assembleRelease --no-daemon
           cp app/build/outputs/apk/release/app-release.apk CineFlow.apk
         env:
-          DXBI_TV_KEYSTORE: ${{ runner.temp }}/cineflow.jks
-          DXBI_TV_KEYSTORE_PASSWORD: ${{ secrets.CINEFLOW_KEYSTORE_PASSWORD }}
-          DXBI_TV_KEY_ALIAS: androiddebugkey
-          DXBI_TV_KEY_PASSWORD: ${{ secrets.CINEFLOW_KEYSTORE_PASSWORD }}
+          CINEFLOW_KEYSTORE: ${{ runner.temp }}/cineflow.jks
+          CINEFLOW_KEYSTORE_PASSWORD: ${{ secrets.CINEFLOW_KEYSTORE_PASSWORD }}
+          CINEFLOW_KEY_ALIAS: androiddebugkey
+          CINEFLOW_KEY_PASSWORD: ${{ secrets.CINEFLOW_KEYSTORE_PASSWORD }}
 
       - uses: actions/upload-artifact@v4
         if: env.HAS_KEY == 'true'

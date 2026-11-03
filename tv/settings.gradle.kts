@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "dxbi-tv"
+rootProject.name = "cineflow-tv"
 include(":app")

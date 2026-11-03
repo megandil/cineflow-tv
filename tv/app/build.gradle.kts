@@ -5,12 +5,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// The TV app shares dx.bi's version number: it's read from the plugin at the repository root
-val pluginFile = rootProject.file("../dxbi.plugin.js")
-val dxbiVersion = Regex("""@version\s+([\d.]+)""").find(pluginFile.readText())!!.groupValues[1]
-val versionParts = dxbiVersion.split(".").map { it.toInt() }
+// CineFlow version. Bump this when publishing a GitHub release.
+val cineflowVersion = "2.24.0"
+val versionParts = cineflowVersion.split(".").map { it.toInt() }
 
-// Release signing: tv/keystore.properties (not in git) or the DXBI_TV_KEYSTORE* environment variables in CI
+// Release signing: tv/keystore.properties (not in git) or the CINEFLOW_KEYSTORE* environment variables in CI
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -18,7 +17,7 @@ val keystoreProps = Properties().apply {
 fun signingValue(key: String, env: String): String? = keystoreProps.getProperty(key) ?: System.getenv(env)
 
 android {
-    namespace = "com.notdxbi.dxbi.tv"
+    namespace = "com.dani.cineflow.tv"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
 
@@ -26,18 +25,18 @@ android {
         applicationId = "com.dani.cineflow.tv"
         minSdk = 24
         targetSdk = 35
-        versionName = dxbiVersion
+        versionName = cineflowVersion
         versionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
     }
 
     signingConfigs {
         create("release") {
-            val store = signingValue("storeFile", "DXBI_TV_KEYSTORE")
+            val store = signingValue("storeFile", "CINEFLOW_KEYSTORE")
             if (store != null) {
                 storeFile = rootProject.file(store)
-                storePassword = signingValue("storePassword", "DXBI_TV_KEYSTORE_PASSWORD")
-                keyAlias = signingValue("keyAlias", "DXBI_TV_KEY_ALIAS")
-                keyPassword = signingValue("keyPassword", "DXBI_TV_KEY_PASSWORD")
+                storePassword = signingValue("storePassword", "CINEFLOW_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "CINEFLOW_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "CINEFLOW_KEY_PASSWORD")
             }
         }
     }
@@ -53,7 +52,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (signingValue("storeFile", "DXBI_TV_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release") else signingConfig = signingConfigs.getByName("debug")
+            if (signingValue("storeFile", "CINEFLOW_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release") else signingConfig = signingConfigs.getByName("debug")
         }
     }
 

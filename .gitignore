@@ -10,3 +10,7 @@ tools/prev/
 # Cloudflare Worker local secrets
 .dev.vars
 .wrangler/
+
+# Local Android builds
+CineFlow.apk
+*.apk

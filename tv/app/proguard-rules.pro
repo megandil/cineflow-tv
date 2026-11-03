@@ -1,5 +1,5 @@
 # The page calls these through the JavaScript bridge
--keepclassmembers class com.notdxbi.dxbi.tv.Bridge {
+-keepclassmembers class com.dani.cineflow.tv.Bridge {
     @android.webkit.JavascriptInterface <methods>;
 }
 

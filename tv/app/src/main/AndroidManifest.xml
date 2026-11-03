@@ -16,7 +16,7 @@
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Dxbi">
+        android:theme="@style/Theme.CineFlow">
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -34,7 +34,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi">
+            android:theme="@style/Theme.CineFlow">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -48,7 +48,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi">
+            android:theme="@style/Theme.CineFlow">
             <!-- stremio:// addon links, installed natively -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -63,70 +63,70 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".NativeSettingsActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".NativeSettingsSectionActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".NativeSearchActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".NativeAddonsActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".NativeAccountActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".NativeDetailActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".ChannelsActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".GuideActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi" />
+            android:theme="@style/Theme.CineFlow" />
 
         <activity
             android:name=".PlayerActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/Theme.Dxbi.Player" />
+            android:theme="@style/Theme.CineFlow.Player" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
