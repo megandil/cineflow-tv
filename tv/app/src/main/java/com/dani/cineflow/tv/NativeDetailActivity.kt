@@ -438,18 +438,19 @@ class NativeDetailActivity : AppCompatActivity() {
         }
         art.addView(badge)
         val progress = NativeProgressStore.get(this, meta.id)
-        if (NativeProgressStore.isWatched(this, video.id)) {
-            art.addView(TextView(this).apply {
-                text = "VISTO"
-                setTextColor(Color.rgb(12,13,16))
-                textSize = 7f
-                typeface = Typeface.DEFAULT_BOLD
-                setBackgroundColor(MINT)
-                setPadding(dp(6), dp(3), dp(6), dp(3))
-                layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, dp(7), dp(7)) }
-            })
-        }
-        if (progress?.videoId == video.id) {
+        val watched = NativeProgressStore.isWatched(this, video.id)
+        art.addView(TextView(this).apply {
+            text = "VISTO"
+            setTextColor(Color.rgb(12,13,16))
+            textSize = 7f
+            typeface = Typeface.DEFAULT_BOLD
+            setBackgroundColor(MINT)
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            tag = "watched:${video.id}"
+            visibility = if (watched) View.VISIBLE else View.GONE
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, dp(7), dp(7)) }
+        })
+        if (progress?.videoId == video.id && !watched) {
             art.addView(TextView(this).apply {
                 text = "CONTINUAR"
                 setTextColor(Color.rgb(12,13,16))
@@ -457,6 +458,7 @@ class NativeDetailActivity : AppCompatActivity() {
                 typeface = Typeface.DEFAULT_BOLD
                 setBackgroundColor(MINT)
                 setPadding(dp(6), dp(3), dp(6), dp(3))
+                tag = "continue:${video.id}"
                 layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.START).apply { setMargins(dp(7), 0, 0, dp(7)) }
             })
         }
@@ -487,8 +489,10 @@ class NativeDetailActivity : AppCompatActivity() {
         val dialog = Dialog(this)
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(20), dp(24), dp(16))
+            setPadding(dp(28), dp(20), dp(28), dp(16))
             background = rounded(Color.rgb(17,19,25), 18, Color.rgb(64,68,79), 1)
+            clipChildren = false
+            clipToPadding = false
         }
         panel.addView(TextView(this).apply {
             text = "EPISODIO"
@@ -518,8 +522,8 @@ class NativeDetailActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) }
                 setOnClickListener { dialog.dismiss(); action() }
                 onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                    v.background = rounded(if (has) Color.rgb(42,46,55) else Color.rgb(23,25,32), 11, if (has) CORAL else Color.rgb(53,57,68), if (has) 2 else 1)
-                    v.animate().scaleX(if (has) 1.02f else 1f).scaleY(if (has) 1.02f else 1f).setDuration(100).start()
+                    v.background = rounded(if (has) Color.rgb(42,46,55) else Color.rgb(23,25,32), 11,
+                        if (has) CORAL else Color.rgb(53,57,68), if (has) 2 else 1)
                 }
             }
             panel.addView(row)
@@ -533,6 +537,8 @@ class NativeDetailActivity : AppCompatActivity() {
         option("✓", "Marcar como visto", "Quita el episodio de Continuar viendo") {
             NativeProgressStore.markWatched(this, video.id)
             NativeProgressStore.remove(this, meta.id)
+            body.findViewWithTag<View>("continue:${video.id}")?.visibility = View.GONE
+            body.findViewWithTag<View>("watched:${video.id}")?.visibility = View.VISIBLE
             Toast.makeText(this, "Episodio marcado como visto", Toast.LENGTH_SHORT).show()
         }
         val cancel = TextView(this).apply {
@@ -556,7 +562,7 @@ class NativeDetailActivity : AppCompatActivity() {
         dialog.window?.apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             setDimAmount(.72f)
-            setLayout(dp(560), WindowManager.LayoutParams.WRAP_CONTENT)
+            setLayout(dp(620), WindowManager.LayoutParams.WRAP_CONTENT)
         }
         dialog.setOnShowListener { restart.requestFocus() }
         dialog.show()
