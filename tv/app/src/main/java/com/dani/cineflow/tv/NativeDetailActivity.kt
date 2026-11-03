@@ -99,9 +99,12 @@ class NativeDetailActivity : AppCompatActivity() {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 0, 0, dp(34))
+            clipChildren = false
+            clipToPadding = false
         }
         val hero = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(350))
+            clipChildren = false
         }
         backdrop = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -147,7 +150,14 @@ class NativeDetailActivity : AppCompatActivity() {
         heroText.addView(title)
         metaLine = TextView(this).apply { setTextColor(Color.rgb(190,195,202)); textSize = 10f; letterSpacing = .05f }
         heroText.addView(metaLine)
-        actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(14), 0, 0) }
+        actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            // Buttons scale on focus; keep their rounded left edge inside the container.
+            setPadding(dp(6), dp(14), dp(6), 0)
+            clipChildren = false
+            clipToPadding = false
+        }
+        heroText.clipChildren = false
         heroText.addView(actions)
         hero.addView(heroText)
         content.addView(hero)
@@ -169,6 +179,8 @@ class NativeDetailActivity : AppCompatActivity() {
         body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(54), 0, dp(54), 0)
+            clipChildren = false
+            clipToPadding = false
         }
         content.addView(body)
         scroll.addView(content)
