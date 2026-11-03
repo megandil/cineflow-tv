@@ -58,13 +58,18 @@ class NativeHomeActivity : AppCompatActivity() {
     private var libraryCache: List<StremioSession.LibraryItem> = emptyList()
     private var firstRow: RecyclerView? = null
     private var firstCardLeftPending = false
+    private var renderedProfile: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Locale.setDefault(Locale.forLanguageTag("es-ES"))
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
+        renderedProfile = Profiles.activeId(this)
         setContentView(buildUi())
+        if (Profiles.list(this).size > 1) {
+            startActivity(Intent(this, ProfilePickerActivity::class.java))
+        }
         loadCatalogs()
         UpdateManager.checkAndPrompt(this, manual = false)
         CatalogPrompt.checkIfNeeded(this) { loadCatalogs() }
@@ -78,7 +83,16 @@ class NativeHomeActivity : AppCompatActivity() {
         homeRoot.postDelayed({
             if (!isFinishing && (currentFocus == null || currentFocus === homeRoot)) heroPlay.requestFocus()
         }, 300)
-        if (moviesCache.isNotEmpty() || seriesCache.isNotEmpty()) {
+        val activeProfile = Profiles.activeId(this)
+        if (activeProfile != renderedProfile) {
+            renderedProfile = activeProfile
+            moviesCache = emptyList()
+            filmsCache = emptyList()
+            seriesCache = emptyList()
+            extraCatalogsCache = emptyList()
+            libraryCache = emptyList()
+            loadCatalogs()
+        } else if (moviesCache.isNotEmpty() || seriesCache.isNotEmpty()) {
             render(moviesCache, filmsCache, seriesCache, libraryCache, extraCatalogsCache)
         }
         // Covers returning from the QR login screen: the addon check runs again once the
@@ -759,7 +773,7 @@ class NativeHomeActivity : AppCompatActivity() {
                 films = fetch("movie", "imdbRating")
                 series = fetch("series", "top")
             }
-            val library = if (StremioSession.isLoggedIn(this)) StremioSession.library(this) else emptyList()
+            val library = if (Profiles.isMain(this) && StremioSession.isLoggedIn(this)) StremioSession.library(this) else emptyList()
             runOnUiThread {
                 moviesCache = movies
                 filmsCache = films

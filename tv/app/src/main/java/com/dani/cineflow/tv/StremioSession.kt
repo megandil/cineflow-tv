@@ -351,6 +351,7 @@ object StremioSession {
     }
 
     fun syncProgress(context: Context, streamJson: String?, position: Long, duration: Long, ended: Boolean) {
+        if (!Profiles.isMain(context)) return
         if (streamJson.isNullOrBlank() || position <= 5_000L) return
         val stream = try { JSONObject(streamJson) } catch (_: Exception) { return }
         val id = stream.optString("metaId").ifBlank { stream.optString("videoId") }

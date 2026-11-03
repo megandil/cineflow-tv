@@ -59,6 +59,13 @@
         </activity>
 
         <activity
+            android:name=".ProfilePickerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.CineFlow" />
+
+        <activity
             android:name=".NativeLibraryActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:exported="false"

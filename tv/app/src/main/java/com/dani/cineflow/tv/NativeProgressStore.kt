@@ -7,7 +7,7 @@ import org.json.JSONObject
 /** Local "Continue watching" state for the native player, independent from the old WebView. */
 object NativeProgressStore {
     private const val PREFS = "cineflow-native-progress"
-    private const val KEY = "items"
+    private fun key(context: Context): String = Profiles.progressKey(context)
     private const val MAX = 16
 
     data class Entry(
@@ -30,7 +30,7 @@ object NativeProgressStore {
         val id = stream.optString("metaId").ifBlank { stream.optString("videoId") }
         if (id.isBlank()) return
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val items = try { JSONArray(prefs.getString(KEY, "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
+        val items = try { JSONArray(prefs.getString(key(context), "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
         val kept = JSONArray()
         for (i in 0 until items.length()) {
             val o = items.optJSONObject(i) ?: continue
@@ -57,11 +57,11 @@ object NativeProgressStore {
             val o = kept.optJSONObject(kept.length() - 1 - i) ?: continue
             out.put(o)
         }
-        prefs.edit().putString(KEY, out.toString()).apply()
+        prefs.edit().putString(key(context), out.toString()).apply()
     }
 
     fun list(context: Context): List<Entry> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "[]") ?: "[]"
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(key(context), "[]") ?: "[]"
         return try {
             val arr = JSONArray(raw)
             (0 until arr.length()).mapNotNull { i ->
@@ -88,19 +88,19 @@ object NativeProgressStore {
 
     fun remove(context: Context, id: String) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val items = try { JSONArray(prefs.getString(KEY, "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
+        val items = try { JSONArray(prefs.getString(key(context), "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
         val kept = JSONArray()
         for (i in 0 until items.length()) {
             val o = items.optJSONObject(i) ?: continue
             if (o.optString("id") != id) kept.put(o)
         }
-        prefs.edit().putString(KEY, kept.toString()).apply()
+        prefs.edit().putString(key(context), kept.toString()).apply()
     }
 
     private fun seasonFrom(videoId: String): Int = videoId.split(':').let { p -> if (p.size >= 3) p[p.size - 2].toIntOrNull() ?: 0 else 0 }
     private fun episodeFrom(videoId: String): Int = videoId.split(':').let { p -> if (p.size >= 3) p[p.size - 1].toIntOrNull() ?: 0 else 0 }
 
     fun clear(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(key(context)).apply()
     }
 }

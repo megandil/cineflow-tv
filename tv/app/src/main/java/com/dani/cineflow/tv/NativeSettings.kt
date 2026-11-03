@@ -18,13 +18,16 @@ object NativeSettings {
 
     fun value(context: Context, key: String, fallback: String = DEFAULTS[key] ?: ""): String {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.contains(key)) return prefs.getString(key, fallback) ?: fallback
-        // migrate the values the old WebView plugin already saved, when present
-        try {
-            val old = context.getSharedPreferences("plugin-settings", Context.MODE_PRIVATE).getString("cineflow", null)
-            val json = JSONObject(old ?: "")
-            if (json.has(key)) return json.optString(key, fallback)
-        } catch (_: Exception) { /* no old settings */ }
+        val storageKey = Profiles.settingsKey(context, key)
+        if (prefs.contains(storageKey)) return prefs.getString(storageKey, fallback) ?: fallback
+        // Keep the old values for the Principal profile only.
+        if (Profiles.isMain(context)) {
+            try {
+                val old = context.getSharedPreferences("plugin-settings", Context.MODE_PRIVATE).getString("cineflow", null)
+                val json = JSONObject(old ?: "")
+                if (json.has(key)) return json.optString(key, fallback)
+            } catch (_: Exception) { /* no old settings */ }
+        }
         return fallback
     }
 
@@ -32,6 +35,8 @@ object NativeSettings {
         value(context, key, if (fallback) "true" else "false") == "true"
 
     fun set(context: Context, key: String, value: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(key, value).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(Profiles.settingsKey(context, key), value)
+            .apply()
     }
 }
