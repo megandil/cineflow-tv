@@ -427,10 +427,18 @@ class NativeHomeActivity : AppCompatActivity() {
                 val position = parent.getChildAdapterPosition(card)
                 if (position <= 0) {
                     parent.scrollToPosition(0)
-                    card.requestFocus()
+                    // First Left on the first card stays there; the next Left (including a
+                    // held-key repeat) intentionally opens the side menu.
+                    if (firstCardLeftPending) {
+                        firstCardLeftPending = false
+                        railRows.firstOrNull()?.requestFocus()
+                            ?: rail?.getChildAt(0)?.requestFocus()
+                    } else {
+                        firstCardLeftPending = true
+                        card.requestFocus()
+                    }
                     return true
                 }
-                firstCardLeftPending = false
                 val previous = parent.findViewHolderForAdapterPosition(position - 1)?.itemView
                 if (previous != null) {
                     previous.requestFocus()
@@ -440,6 +448,8 @@ class NativeHomeActivity : AppCompatActivity() {
                         parent.findViewHolderForAdapterPosition(position - 1)?.itemView?.requestFocus()
                     }
                 }
+                // When this Left lands on the first card, arm the next Left for the menu.
+                firstCardLeftPending = position == 1
                 return true
             }
             card = parent
@@ -638,13 +648,6 @@ class NativeHomeActivity : AppCompatActivity() {
             holder.card.tag = if (autoResume) meta else null
             // The first card keeps Left inside its row instead of jumping to the side rail.
             holder.card.nextFocusLeftId = View.NO_ID
-            holder.card.setOnKeyListener { v, keyCode, event ->
-                if (event.action == android.view.KeyEvent.ACTION_DOWN &&
-                    keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT
-                ) {
-                    moveLeftInsideRow(v)
-                } else false
-            }
             holder.name.text = meta.name
             holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("   ")
             NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 3)
