@@ -1,11 +1,12 @@
 package com.notdxbi.dxbi.tv
 
+import android.content.Context
 import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.concurrent.thread
 
 /**
  * Spanish titles without requiring a TMDB API key.
@@ -18,8 +19,30 @@ object TitleLocalizer {
     data class Lookup(val key: String, val imdb: String?, val tmdb: Long?, val type: String)
 
     private val cache = ConcurrentHashMap<String, String>()
+    private var cacheFile: File? = null
+    private var loaded = false
 
-    fun spanish(entries: List<Lookup>): Map<String, String> {
+    @Synchronized
+    fun init(context: Context) {
+        if (loaded) return
+        loaded = true
+        val file = File(context.filesDir, "spanish-titles.json")
+        cacheFile = file
+        try {
+            if (file.exists()) {
+                val json = JSONObject(file.readText())
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val value = json.optString(key)
+                    if (key.isNotBlank() && value.isNotBlank()) cache[key] = value
+                }
+            }
+        } catch (_: Exception) { /* cache is optional */ }
+    }
+
+    fun spanish(context: Context, entries: List<Lookup>): Map<String, String> {
+        init(context)
         if (entries.isEmpty()) return emptyMap()
         val byKey = entries.associateBy { it.key }
         val out = HashMap<String, String>()
@@ -47,7 +70,18 @@ object TitleLocalizer {
                 out[entry.key] = title
             }
         }
+        save()
         return out
+    }
+
+    @Synchronized
+    private fun save() {
+        val file = cacheFile ?: return
+        try {
+            val json = JSONObject()
+            for ((key, value) in cache) json.put(key, value)
+            file.writeText(json.toString())
+        } catch (_: Exception) { /* ignore cache write errors */ }
     }
 
     private fun wikidata(imdbIds: List<String>): Map<String, String> {

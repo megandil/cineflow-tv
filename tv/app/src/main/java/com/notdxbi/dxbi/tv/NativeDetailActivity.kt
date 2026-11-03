@@ -617,7 +617,7 @@ class NativeDetailActivity : AppCompatActivity() {
                 videos = videos,
                 tmdbId = tmdbId,
             )
-            val title = TitleLocalizer.spanish(listOf(TitleLocalizer.Lookup(
+            val title = TitleLocalizer.spanish(this, listOf(TitleLocalizer.Lookup(
                 key = base.id,
                 imdb = base.id.takeIf { it.startsWith("tt") },
                 tmdb = tmdbId,

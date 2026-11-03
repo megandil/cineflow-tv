@@ -737,7 +737,7 @@ class NativeHomeActivity : AppCompatActivity() {
 
     private fun localize(items: List<Meta>): List<Meta> {
         if (items.isEmpty()) return items
-        val translations = TitleLocalizer.spanish(items.map {
+        val translations = TitleLocalizer.spanish(this, items.map {
             TitleLocalizer.Lookup(
                 key = it.id,
                 imdb = it.id.takeIf { id -> id.startsWith("tt") },
