@@ -61,6 +61,7 @@ class NativeHomeActivity : AppCompatActivity() {
     private var firstRow: RecyclerView? = null
 
     private var renderedProfile: String? = null
+    private var firstCardArmed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,6 +109,9 @@ class NativeHomeActivity : AppCompatActivity() {
             loadingOverlay = null
             loadingStatus = null
             return true
+        }
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode != android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+            firstCardArmed = false
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
             if (currentFocus === heroMore) {
@@ -455,7 +459,16 @@ class NativeHomeActivity : AppCompatActivity() {
                 val position = parent.getChildAdapterPosition(card)
                 if (position <= 0) {
                     parent.scrollToPosition(0)
-                    card.requestFocus()
+                    if (firstCardArmed) {
+                        // A second deliberate Left at the start of the row goes to the rail.
+                        firstCardArmed = false
+                        railRows.firstOrNull()?.requestFocus()
+                            ?: rail?.getChildAt(0)?.requestFocus()
+                    } else {
+                        // First Left at the start stays on the card and arms the next one.
+                        firstCardArmed = true
+                        card.requestFocus()
+                    }
                     return true
                 }
                 // Always scroll the previous card into view first. Focusing a card that is
@@ -465,6 +478,8 @@ class NativeHomeActivity : AppCompatActivity() {
                 parent.requestFocus()
                 parent.scrollToPosition(position - 1)
                 focusHolderAfterScroll(parent, position - 1, 0)
+                // Arming happens only when this Left actually lands on the first card.
+                firstCardArmed = position == 1
                 return true
             }
             card = parent
