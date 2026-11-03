@@ -92,8 +92,12 @@ class ProfilePickerActivity : AppCompatActivity() {
                     if (profile.id == active) CORAL else BORDER, if (profile.id == active) 2 else 1)
                 setOnClickListener {
                     Profiles.setActive(this@ProfilePickerActivity, profile.id)
-                    startActivity(Intent(this@ProfilePickerActivity, NativeHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
-                    finish()
+                    // Restart Home in a clean task: Android does not reliably re-run the
+                    // profile-aware onResume when the picker was opened from Settings.
+                    startActivity(Intent(this@ProfilePickerActivity, NativeHomeActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        .putExtra(NativeHomeActivity.EXTRA_PROFILE_SELECTED, true))
+                    finishAffinity()
                 }
                 onFocusChangeListener = View.OnFocusChangeListener { v, has ->
                     v.background = rounded(if (has) Color.rgb(43,47,56) else if (profile.id == active) Color.rgb(34,38,47) else CARD, 14,

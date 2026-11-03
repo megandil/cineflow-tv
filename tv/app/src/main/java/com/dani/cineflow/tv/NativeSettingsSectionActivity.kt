@@ -71,7 +71,7 @@ class NativeSettingsSectionActivity : AppCompatActivity() {
                 info(StremioSession.email(this) ?: "Sin vincular")
                 action("GESTIONAR CUENTA") { startActivity(Intent(this, NativeAccountActivity::class.java)) }
                 action("VER ADDONS") { startActivity(Intent(this, NativeAddonsActivity::class.java)) }
-                action("PERFILES") { startActivity(Intent(this, ProfilePickerActivity::class.java)) }
+                action("CAMBIAR DE PERFIL") { startActivity(Intent(this, ProfilePickerActivity::class.java)) }
                 action("VER BIBLIOTECA") { startActivity(Intent(this, NativeLibraryActivity::class.java)) }
                 action("CERRAR SESIÓN") { StremioSession.logout(this); recreate() }
             }

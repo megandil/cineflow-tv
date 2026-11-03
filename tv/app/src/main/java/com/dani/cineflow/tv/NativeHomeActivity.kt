@@ -67,7 +67,7 @@ class NativeHomeActivity : AppCompatActivity() {
         hideSystemBars()
         renderedProfile = Profiles.activeId(this)
         setContentView(buildUi())
-        if (Profiles.list(this).size > 1) {
+        if (Profiles.list(this).size > 1 && !intent.getBooleanExtra(EXTRA_PROFILE_SELECTED, false)) {
             startActivity(Intent(this, ProfilePickerActivity::class.java))
         }
         loadCatalogs()
@@ -886,6 +886,7 @@ class NativeHomeActivity : AppCompatActivity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
+        const val EXTRA_PROFILE_SELECTED = "cineflow.profile.selected"
         private val INK = Color.rgb(7, 8, 11)
         private val RAIL = Color.rgb(11, 13, 18)
         private val CARD = Color.rgb(18, 20, 26)
