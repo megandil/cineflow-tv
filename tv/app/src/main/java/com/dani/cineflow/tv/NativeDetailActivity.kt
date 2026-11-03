@@ -1,5 +1,6 @@
 package com.dani.cineflow.tv
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -17,6 +18,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -380,6 +382,17 @@ class NativeDetailActivity : AppCompatActivity() {
                 selectedVideo = video
                 loadStreams(video.id, autoplay = true)
             }
+            setOnLongClickListener {
+                showEpisodeOptions(meta, video)
+                true
+            }
+            setOnKeyListener { _, keyCode, event ->
+                if (event.action == android.view.KeyEvent.ACTION_DOWN && event.isLongPress &&
+                    (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER)) {
+                    showEpisodeOptions(meta, video)
+                    true
+                } else false
+            }
             onFocusChangeListener = View.OnFocusChangeListener { v, has ->
                 v.background = rounded(if (has) Color.rgb(42,46,55) else CARD, 11, if (has) CORAL else BORDER, if (has) 2 else 1)
                 v.animate().scaleX(if (has) 1.015f else 1f).scaleY(if (has) 1.015f else 1f).setDuration(120).start()
@@ -410,6 +423,17 @@ class NativeDetailActivity : AppCompatActivity() {
         }
         art.addView(badge)
         val progress = NativeProgressStore.get(this, meta.id)
+        if (NativeProgressStore.isWatched(this, video.id)) {
+            art.addView(TextView(this).apply {
+                text = "VISTO"
+                setTextColor(Color.rgb(12,13,16))
+                textSize = 7f
+                typeface = Typeface.DEFAULT_BOLD
+                setBackgroundColor(MINT)
+                setPadding(dp(6), dp(3), dp(6), dp(3))
+                layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, dp(7), dp(7)) }
+            })
+        }
         if (progress?.videoId == video.id) {
             art.addView(TextView(this).apply {
                 text = "CONTINUAR"
@@ -442,6 +466,24 @@ class NativeDetailActivity : AppCompatActivity() {
             })
         }
         return card
+    }
+
+    private fun showEpisodeOptions(meta: Meta, video: Video) {
+        val options = arrayOf("Reproducir desde el inicio", "Marcar como visto")
+        AlertDialog.Builder(this)
+            .setTitle("T${video.season} E${video.episode} · ${video.title ?: video.name ?: "Episodio"}")
+            .setItems(options) { _, which ->
+                if (which == 0) {
+                    resumeMs = 0L
+                    selectedVideo = video
+                    loadStreams(video.id, autoplay = true)
+                } else {
+                    NativeProgressStore.markWatched(this, video.id)
+                    NativeProgressStore.remove(this, meta.id)
+                    Toast.makeText(this, "Episodio marcado como visto", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 
     private fun playFromStart() {

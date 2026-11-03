@@ -72,7 +72,7 @@ object Profiles {
         val nextActive = if (activeId(context) == id) next.firstOrNull { it.main }?.id ?: next.first().id else activeId(context)
         save(context, next, nextActive)
         context.getSharedPreferences("cineflow-native-progress", Context.MODE_PRIVATE).edit()
-            .remove("items_$id").apply()
+            .remove("items_$id").remove("watched_$id").apply()
         context.getSharedPreferences("cineflow-profile-library", Context.MODE_PRIVATE).edit()
             .remove("items_$id").apply()
         val settings = context.getSharedPreferences("cineflow-settings", Context.MODE_PRIVATE)

@@ -72,6 +72,7 @@ class PlayerActivity : AppCompatActivity() {
     private var imdbId: String? = null
     private var episodeSeason = 0
     private var episodeNumber = 0
+    private var currentVideoId: String? = null
     private var autoSkip = "off"
     private val autoSkipped = mutableSetOf<SkipSegment>()
     private var showing: SkipSegment? = null
@@ -142,6 +143,10 @@ class PlayerActivity : AppCompatActivity() {
         skipButton.isFocusable = false
         skipButton.isFocusableInTouchMode = false
         skipButton.setOnClickListener { doSkip() }
+        skipButton.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+            v.setBackgroundResource(if (has) R.drawable.skip_focus_bg else R.drawable.skip_bg)
+            v.animate().scaleX(if (has) 1.05f else 1f).scaleY(if (has) 1.05f else 1f).setDuration(100).start()
+        }
         // While the controls are up, Skip is part of the controller. Down/Left returns
         // to the normal play bar; OK activates the skip.
         skipButton.setOnKeyListener { _, keyCode, event ->
@@ -189,6 +194,7 @@ class PlayerActivity : AppCompatActivity() {
         imdbId = stream.optString("imdbId").takeIf { it.isNotBlank() }
         episodeSeason = stream.optInt("season", 0)
         episodeNumber = stream.optInt("episode", 0)
+        currentVideoId = stream.optString("videoId").takeIf { it.isNotBlank() }
         nextVideoId = stream.optString("nextVideoId").takeIf { it.isNotBlank() }
         nextSeason = stream.optInt("nextSeason", 0)
         nextEpisode = stream.optInt("nextEpisode", 0)
@@ -294,29 +300,8 @@ class PlayerActivity : AppCompatActivity() {
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state != Player.STATE_ENDED) return
-                val nextId = nextVideoId
                 val upNext = NativeSettings.value(this@PlayerActivity, "upNext", "10")
-                if (!nextId.isNullOrBlank() && upNext != "0" && nativeMetaId != null) {
-                    nextPending = true
-                    DirectPlayback.play(
-                        this@PlayerActivity,
-                        DirectPlayback.Target(
-                            id = nativeMetaId!!,
-                            type = nativeMetaType ?: "series",
-                            name = metaName ?: "",
-                            poster = metaPoster,
-                            videoId = nextId,
-                            startMs = 0L,
-                            season = nextSeason,
-                            episode = nextEpisode,
-                            episodeTitle = nextTitle,
-                        ),
-                        onError = { finishWith(ended = true) },
-                        onStarted = { finishWith(ended = true) },
-                    )
-                } else {
-                    finishWith(ended = true)
-                }
+                if (upNext == "0" || !startNextEpisode()) finishWith(ended = true)
             }
 
             // A subtitle switched on mid-line only shows from its next line: a seek to where we are
@@ -429,9 +414,50 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    private fun nextEpisodeId(): String? {
+        val explicit = nextVideoId
+        if (!explicit.isNullOrBlank()) return explicit
+        val current = currentVideoId ?: return null
+        val parts = current.split(':')
+        if (parts.size < 3) return null
+        val season = parts[parts.size - 2].toIntOrNull() ?: return null
+        val episode = parts[parts.size - 1].toIntOrNull() ?: return null
+        if (season <= 0 || episode <= 0) return null
+        return parts.dropLast(2).joinToString(":") + ":$season:${episode + 1}"
+    }
+
+    /** Starts the next episode directly; true means the current player will close when it starts. */
+    private fun startNextEpisode(): Boolean {
+        val nextId = nextEpisodeId() ?: return false
+        val metaId = nativeMetaId ?: currentVideoId?.substringBefore(':') ?: return false
+        nextPending = true
+        DirectPlayback.play(
+            this,
+            DirectPlayback.Target(
+                id = metaId,
+                type = nativeMetaType ?: "series",
+                name = metaName ?: "",
+                poster = metaPoster,
+                videoId = nextId,
+                startMs = 0L,
+                season = nextSeason.takeIf { it > 0 } ?: nextId.split(':').getOrNull(1)?.toIntOrNull() ?: 0,
+                episode = nextEpisode.takeIf { it > 0 } ?: nextId.split(':').getOrNull(2)?.toIntOrNull() ?: 0,
+                episodeTitle = nextTitle,
+            ),
+            onError = { finishWith(ended = true) },
+            onStarted = { finishWith(ended = true) },
+        )
+        return true
+    }
+
     private fun doSkip(seg: SkipSegment? = showing) {
         val exo = player ?: return
         val s = seg ?: return
+        if (s.type == "credits" && startNextEpisode()) {
+            showing = null
+            skipButton.visibility = View.GONE
+            return
+        }
         val duration = exo.duration.takeIf { it != C.TIME_UNSET } ?: return
         exo.seekTo(segmentEnd(s, duration).coerceAtMost(duration))
         showing = null
@@ -464,6 +490,7 @@ class PlayerActivity : AppCompatActivity() {
         val duration = exo?.duration?.takeIf { it != C.TIME_UNSET } ?: 0L
         val position = if (ended) duration else exo?.currentPosition ?: 0L
         NativeProgressStore.record(this, streamJson, position, duration, ended)
+        if (ended) currentVideoId?.let { NativeProgressStore.markWatched(this, it) }
         val syncJson = streamJson
         if (syncJson != null) thread(isDaemon = true) { StremioSession.syncProgress(this, syncJson, position, duration, ended) }
         PlaybackBus.closed(position, duration, ended, error)
