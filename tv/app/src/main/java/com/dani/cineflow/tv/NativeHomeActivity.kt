@@ -59,7 +59,7 @@ class NativeHomeActivity : AppCompatActivity() {
     private var extraCatalogsCache: List<ExtraRow> = emptyList()
     private var libraryCache: List<StremioSession.LibraryItem> = emptyList()
     private var firstRow: RecyclerView? = null
-    private var firstCardLeftPending = false
+
     private var renderedProfile: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,21 +109,13 @@ class NativeHomeActivity : AppCompatActivity() {
             loadingStatus = null
             return true
         }
-        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode != android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
-            firstCardLeftPending = false
-        }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
-            val focused = currentFocus
-            if (focused === heroMore) {
+            if (currentFocus === heroMore) {
                 heroPlay.requestFocus()
                 return true
             }
-            if (moveLeftInsideRow(currentFocus, event.repeatCount > 0)) return true
-            if (focused != null && focused !== heroPlay) {
-                val location = IntArray(2)
-                focused.getLocationOnScreen(location)
-                if (location[0] >= dp(194)) return true
-            }
+            if (moveLeftInsideRow(currentFocus)) return true
+            return true
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN &&
             (event.keyCode == android.view.KeyEvent.KEYCODE_MENU || event.keyCode == android.view.KeyEvent.KEYCODE_SETTINGS)
@@ -454,7 +446,7 @@ class NativeHomeActivity : AppCompatActivity() {
      * FocusFinder otherwise picks the side rail (Inicio/Explorar/...) on the left. Keep Left
      * inside the row, scrolling to the previous card or staying on the first one.
      */
-    private fun moveLeftInsideRow(start: View?, held: Boolean = false): Boolean {
+    private fun moveLeftInsideRow(start: View?): Boolean {
         var view = start ?: return false
         var card: View = view
         while (card.parent is View) {
@@ -463,34 +455,37 @@ class NativeHomeActivity : AppCompatActivity() {
                 val position = parent.getChildAdapterPosition(card)
                 if (position <= 0) {
                     parent.scrollToPosition(0)
-                    // Taps NEVER open the rail: that made a quick double tap feel broken.
-                    // Keep Left in the row; only a held/repeating Left opens the side menu.
-                    if (held && firstCardLeftPending) {
-                        firstCardLeftPending = false
-                        railRows.firstOrNull()?.requestFocus()
-                            ?: rail?.getChildAt(0)?.requestFocus()
-                    } else {
-                        firstCardLeftPending = true
-                        card.requestFocus()
-                    }
+                    card.requestFocus()
                     return true
                 }
-                val previous = parent.findViewHolderForAdapterPosition(position - 1)?.itemView
-                if (previous != null) {
-                    previous.requestFocus()
-                } else {
-                    parent.scrollToPosition(position - 1)
-                    parent.post {
-                        parent.findViewHolderForAdapterPosition(position - 1)?.itemView?.requestFocus()
-                    }
-                }
-                // When this Left lands on the first card, arm the next Left for the menu.
-                firstCardLeftPending = position == 1
+                // Always scroll the previous card into view first. Focusing a card that is
+                // clipped/off-screen fails and Android then falls back to the side rail.
+                // Anchor focus on the row itself during the scroll, then restore its card.
+                parent.isFocusable = true
+                parent.requestFocus()
+                parent.scrollToPosition(position - 1)
+                focusHolderAfterScroll(parent, position - 1, 0)
                 return true
             }
             card = parent
         }
         return false
+    }
+
+    /** Waits for the RecyclerView to lay out the target position, then focuses its card. */
+    private fun focusHolderAfterScroll(parent: RecyclerView, position: Int, attempts: Int) {
+        val holder = parent.findViewHolderForAdapterPosition(position)
+        if (holder != null) {
+            holder.itemView.requestFocus()
+            // The row only needed to be focusable while it anchored the focus.
+            parent.isFocusable = false
+            return
+        }
+        if (attempts >= 12) {
+            parent.isFocusable = false
+            return
+        }
+        parent.postDelayed({ focusHolderAfterScroll(parent, position, attempts + 1) }, 40L)
     }
 
     /** Long OK on a remote needs its own timer; View's long-click is unreliable for D-pad. */
@@ -823,8 +818,9 @@ class NativeHomeActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val meta = items[position]
             holder.card.tag = if (autoResume) meta else null
-            // The first card keeps Left inside its row instead of jumping to the side rail.
-            holder.card.nextFocusLeftId = View.NO_ID
+            // The first card must keep Left on itself: the framework's default focus search
+            // would otherwise land on the side rail (Inicio/Explorar/...).
+            holder.card.nextFocusLeftId = if (position == 0) holder.card.id else View.NO_ID
             holder.name.text = meta.name
             holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("   ")
             holder.description.text = meta.description.orEmpty()
