@@ -60,6 +60,7 @@ class NativeHomeActivity : AppCompatActivity() {
     private var libraryCache: List<StremioSession.LibraryItem> = emptyList()
     private var firstRow: RecyclerView? = null
     private var firstCardLeftPending = false
+    private var firstCardLeftAt = 0L
     private var renderedProfile: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -111,6 +112,7 @@ class NativeHomeActivity : AppCompatActivity() {
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode != android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
             firstCardLeftPending = false
+            firstCardLeftAt = 0L
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
             val focused = currentFocus
@@ -118,7 +120,7 @@ class NativeHomeActivity : AppCompatActivity() {
                 heroPlay.requestFocus()
                 return true
             }
-            if (moveLeftInsideRow(currentFocus)) return true
+            if (moveLeftInsideRow(currentFocus, event.repeatCount > 0)) return true
             if (focused != null && focused !== heroPlay) {
                 val location = IntArray(2)
                 focused.getLocationOnScreen(location)
@@ -454,7 +456,7 @@ class NativeHomeActivity : AppCompatActivity() {
      * FocusFinder otherwise picks the side rail (Inicio/Explorar/...) on the left. Keep Left
      * inside the row, scrolling to the previous card or staying on the first one.
      */
-    private fun moveLeftInsideRow(start: View?): Boolean {
+    private fun moveLeftInsideRow(start: View?, held: Boolean = false): Boolean {
         var view = start ?: return false
         var card: View = view
         while (card.parent is View) {
@@ -463,14 +465,17 @@ class NativeHomeActivity : AppCompatActivity() {
                 val position = parent.getChildAdapterPosition(card)
                 if (position <= 0) {
                     parent.scrollToPosition(0)
-                    // First Left on the first card stays there; the next Left (including a
-                    // held-key repeat) intentionally opens the side menu.
-                    if (firstCardLeftPending) {
+                    val now = android.os.SystemClock.uptimeMillis()
+                    // A quick double-tap must not fly into the rail. The menu only opens on a
+                    // deliberate later press (or while the key is held and repeating).
+                    if (firstCardLeftPending && (held || now - firstCardLeftAt >= 450L)) {
                         firstCardLeftPending = false
+                        firstCardLeftAt = 0L
                         railRows.firstOrNull()?.requestFocus()
                             ?: rail?.getChildAt(0)?.requestFocus()
                     } else {
                         firstCardLeftPending = true
+                        firstCardLeftAt = now
                         card.requestFocus()
                     }
                     return true
@@ -486,6 +491,7 @@ class NativeHomeActivity : AppCompatActivity() {
                 }
                 // When this Left lands on the first card, arm the next Left for the menu.
                 firstCardLeftPending = position == 1
+                firstCardLeftAt = if (position == 1) android.os.SystemClock.uptimeMillis() else 0L
                 return true
             }
             card = parent
