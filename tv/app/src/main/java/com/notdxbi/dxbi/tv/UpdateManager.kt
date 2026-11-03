@@ -9,6 +9,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -173,6 +175,11 @@ object UpdateManager {
         dialog.setCancelable(true)
         later.setOnClickListener { dialog.dismiss() }
         update.setOnClickListener {
+            if (!ensureInstallPermission(activity)) {
+                status.text = "Activa «Instalar apps desconocidas» para CineFlow y vuelve a pulsar Actualizar."
+                status.setTextColor(Color.rgb(255, 210, 120))
+                return@setOnClickListener
+            }
             update.isEnabled = false
             later.isEnabled = false
             update.text = "DESCARGANDO…"
@@ -242,6 +249,24 @@ object UpdateManager {
                 onError(e.message ?: "Error descargando la actualización.")
             }
         }
+    }
+
+    private fun ensureInstallPermission(activity: Activity): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+        if (activity.packageManager.canRequestPackageInstalls()) return true
+        Toast.makeText(activity, "Permite instalar apps desconocidas para CineFlow", Toast.LENGTH_LONG).show()
+        val packageUri = Uri.parse("package:${activity.packageName}")
+        val direct = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, packageUri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            activity.startActivity(direct)
+        } catch (_: Exception) {
+            try {
+                activity.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: Exception) {
+                // The installer's own Ajustes button is the remaining path.
+            }
+        }
+        return false
     }
 
     private fun install(activity: Activity, file: File) {

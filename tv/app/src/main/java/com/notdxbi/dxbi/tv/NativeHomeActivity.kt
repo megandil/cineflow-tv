@@ -338,14 +338,14 @@ class NativeHomeActivity : AppCompatActivity() {
         val continueList = ArrayList<Meta>()
         for (item in local) {
             if (!seen.add(item.id)) continue
-            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (item.season > 0) "T${item.season} E${item.episode}" else null, null, null, null))
+            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (item.season > 0) "T${item.season} E${item.episode}" else null, null, null, null, null))
         }
         for (item in library.filter { it.timeOffset > 0 }.sortedByDescending { it.timeOffset }) {
             if (!seen.add(item.id)) continue
             val parts = item.videoId?.split(':').orEmpty()
             val season = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 0
             val episode = parts.getOrNull(parts.size - 1)?.toIntOrNull() ?: 0
-            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (season > 0) "T$season E$episode" else "Continuar", null, null, null))
+            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (season > 0) "T$season E$episode" else "Continuar", null, null, null, null))
         }
         val continueItems = continueList.take(12)
         continueTargets.clear()
@@ -404,20 +404,30 @@ class NativeHomeActivity : AppCompatActivity() {
             typeface = Typeface.DEFAULT_BOLD
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
+        val verTodoId = View.generateViewId()
         head.addView(TextView(this).apply {
             text = "VER TODO  →"
-            setTextColor(Color.rgb(126,130,140))
+            id = verTodoId
+            setTextColor(CREAM)
             textSize = 8f
             letterSpacing = .08f
-            setPadding(dp(10), 0, 0, 0)
+            setPadding(dp(12), dp(6), dp(12), dp(6))
             isFocusable = true
             isFocusableInTouchMode = true
+            isClickable = true
+            background = rounded(Color.rgb(20,22,28), 8, Color.rgb(60,63,74), 1)
             setOnClickListener { startActivity(Intent(this@NativeHomeActivity, NativeSearchActivity::class.java)) }
+            onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                v.background = rounded(if (has) Color.WHITE else Color.rgb(20,22,28), 8,
+                    if (has) Color.WHITE else Color.rgb(60,63,74), if (has) 2 else 1)
+                (v as TextView).setTextColor(if (has) Color.rgb(12,13,16) else CREAM)
+                v.animate().scaleX(if (has) 1.05f else 1f).scaleY(if (has) 1.05f else 1f).setDuration(120).start()
+            }
         })
         box.addView(head)
         val rv = RecyclerView(this).apply {
             layoutManager = LinearLayoutManager(this@NativeHomeActivity, LinearLayoutManager.HORIZONTAL, false)
-            adapter = CardAdapter(list, type, autoResume)
+            adapter = CardAdapter(list, type, autoResume, verTodoId)
             if (firstRow == null) firstRow = this
             isFocusable = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -486,12 +496,18 @@ class NativeHomeActivity : AppCompatActivity() {
         }
     }
 
-    private inner class CardAdapter(private val items: List<Meta>, private val fallbackType: String, private val autoResume: Boolean = false) : RecyclerView.Adapter<CardAdapter.Holder>() {
+    private inner class CardAdapter(
+        private val items: List<Meta>,
+        private val fallbackType: String,
+        private val autoResume: Boolean = false,
+        private val upFocusId: Int = View.NO_ID,
+    ) : RecyclerView.Adapter<CardAdapter.Holder>() {
         inner class Holder(val card: LinearLayout, val frame: FrameLayout, val image: ImageView, val name: TextView, val sub: TextView) : RecyclerView.ViewHolder(card)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val card = LinearLayout(this@NativeHomeActivity).apply {
                 orientation = LinearLayout.VERTICAL
+                setNextFocusUpId(upFocusId)
                 isFocusable = true
                 isFocusableInTouchMode = true
                 setPadding(dp(2), dp(2), dp(2), dp(2))
@@ -667,7 +683,7 @@ class NativeHomeActivity : AppCompatActivity() {
             val body = connection.inputStream.bufferedReader().use { it.readText() }
             connection.disconnect()
             val metas = JSONObject(body).optJSONArray("metas") ?: return emptyList()
-            (0 until metas.length()).mapNotNull { i ->
+            val parsed = (0 until metas.length()).mapNotNull { i ->
                 val o = metas.optJSONObject(i) ?: return@mapNotNull null
                 Meta(
                     id = o.optString("imdb_id").ifBlank { o.optString("id") },
@@ -679,8 +695,10 @@ class NativeHomeActivity : AppCompatActivity() {
                     rating = o.optString("imdbRating").takeIf { it.isNotBlank() },
                     description = o.optString("description").takeIf { it.isNotBlank() },
                     genres = o.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
+                    tmdbId = o.optLong("moviedb_id").takeIf { it > 0 },
                 )
             }
+            localize(parsed)
         } catch (_: Exception) { emptyList() }
     }
 
@@ -696,7 +714,7 @@ class NativeHomeActivity : AppCompatActivity() {
             val body = connection.inputStream.bufferedReader().use { it.readText() }
             connection.disconnect()
             val metas = JSONObject(body).optJSONArray("metas") ?: return emptyList()
-            (0 until metas.length()).mapNotNull { i ->
+            val parsed = (0 until metas.length()).mapNotNull { i ->
                 val o = metas.optJSONObject(i) ?: return@mapNotNull null
                 Meta(
                     id = o.optString("imdb_id").ifBlank { o.optString("id") },
@@ -708,11 +726,27 @@ class NativeHomeActivity : AppCompatActivity() {
                     rating = o.optString("imdbRating").takeIf { it.isNotBlank() },
                     description = o.optString("description").takeIf { it.isNotBlank() },
                     genres = o.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
+                    tmdbId = o.optLong("moviedb_id").takeIf { it > 0 },
                 )
             }
+            localize(parsed)
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    private fun localize(items: List<Meta>): List<Meta> {
+        if (items.isEmpty()) return items
+        val translations = TitleLocalizer.spanish(items.map {
+            TitleLocalizer.Lookup(
+                key = it.id,
+                imdb = it.id.takeIf { id -> id.startsWith("tt") },
+                tmdb = it.tmdbId,
+                type = it.type,
+            )
+        })
+        if (translations.isEmpty()) return items
+        return items.map { item -> translations[item.id]?.let { item.copy(name = it) } ?: item }
     }
 
     private data class Meta(
@@ -725,6 +759,7 @@ class NativeHomeActivity : AppCompatActivity() {
         val rating: String?,
         val description: String?,
         val genres: List<String>?,
+        val tmdbId: Long?,
     )
 
     private fun rounded(color: Int, radius: Int, stroke: Int, strokeWidth: Int): GradientDrawable = GradientDrawable().apply {
