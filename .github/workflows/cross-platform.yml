@@ -1,0 +1,142 @@
+name: Cross-platform test
+
+# Installs dx.bi with the real installers, launches Stremio Enhanced 1.2.0 on Windows, macOS and
+# Linux, and checks the plugin boots and renders the main screens (tools/smoke-test.mjs).
+# Screenshots from every OS are attached to the run.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  SE_VERSION: v1.2.0
+
+jobs:
+  smoke:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            asset: win-unpacked-x64.zip
+            exe: se/Stremio Enhanced.exe
+          - name: macOS (Apple silicon)
+            os: macos-latest
+            asset: mac-arm64.zip
+            exe: se/mac-arm64/Stremio Enhanced.app/Contents/MacOS/Stremio Enhanced
+          - name: Linux
+            os: ubuntu-latest
+            asset: linux-unpacked.zip
+            exe: se/linux-unpacked/stremio-enhanced
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The one-liners from the README, exactly as users run them (downloads the latest release)
+      - name: Published installer (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: irm https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.ps1 | iex
+      - name: Published installer (bash)
+        if: runner.os != 'Windows'
+        run: curl -fsSL https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.sh | bash
+
+      # Then this commit's installers and plugin, served locally
+      - name: Serve this commit
+        shell: bash
+        run: |
+          python -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &
+          sleep 2
+      - name: This commit's installer (PowerShell 7)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          DXBI_BASE_URL: http://127.0.0.1:8765
+        run: ./install.ps1
+      - name: This commit's installer (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          DXBI_BASE_URL: http://127.0.0.1:8765
+        run: ./install.ps1
+      - name: This commit's installer (bash)
+        if: runner.os != 'Windows'
+        env:
+          DXBI_BASE_URL: http://127.0.0.1:8765
+        run: bash install.sh
+
+      - name: Check the plugin landed where Stremio Enhanced looks
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) dir="$APPDATA/stremio-enhanced/plugins" ;;
+            macOS)   dir="$HOME/Library/Application Support/stremio-enhanced/plugins" ;;
+            *)       dir="$HOME/.config/stremio-enhanced/plugins" ;;
+          esac
+          cmp dxbi.plugin.js "$dir/dxbi.plugin.js"
+          echo "installed at $dir"
+
+      - name: Cache Stremio Enhanced
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: se
+          key: stremio-enhanced-${{ env.SE_VERSION }}-${{ matrix.asset }}
+
+      - name: Download Stremio Enhanced ${{ env.SE_VERSION }}
+        if: steps.cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$SE_VERSION" -R REVENGE977/stremio-enhanced -p "${{ matrix.asset }}" -O se.zip
+          mkdir se
+          if [ "$RUNNER_OS" = macOS ]; then ditto -x -k se.zip se; else unzip -q se.zip -d se; fi
+          rm se.zip
+
+      - name: Linux display and libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgtk-3-0t64 libnss3 libgbm1 libasound2t64 libxss1 >/dev/null
+
+      # The streaming server Stremio Enhanced runs on a Mac, with the same ffmpeg build, so the
+      # smoke test can check dx.bi turns on hardware conversion (VideoToolbox works on Apple silicon runners)
+      - name: Streaming server (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ss/home" && cd "$RUNNER_TEMP/ss"
+          for b in ffmpeg ffprobe; do curl -fsSL -o $b.zip "https://ffmpeg.martin-riedl.de/download/macos/arm64/1766430132_8.0.1/$b.zip" && unzip -o -q $b.zip && chmod +x $b; done
+          curl -fsSL -o server.js https://dl.strem.io/server/v4.20.17/desktop/server.js
+          HOME=$PWD/home APP_PATH=$PWD/home FFMPEG_BIN=$PWD/ffmpeg FFPROBE_BIN=$PWD/ffprobe nohup node server.js > server.log 2>&1 &
+          for i in $(seq 1 60); do grep -q "Tests for hardware accelerated transcoding finished" server.log && break; sleep 2; done
+          grep "hls-converter - Tests for hardware" server.log
+          echo "DXBI_EXPECT_HW_PROFILE=videotoolbox" >> "$GITHUB_ENV"
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          chmod +x "${{ matrix.exe }}" || true
+          if [ "$RUNNER_OS" = Linux ]; then
+            xvfb-run -a -s "-screen 0 1920x1080x24" node tools/smoke-test.mjs "${{ matrix.exe }}" smoke-shots
+          else
+            node tools/smoke-test.mjs "${{ matrix.exe }}" smoke-shots
+          fi
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ runner.os }}
+          path: smoke-shots
+          if-no-files-found: ignore

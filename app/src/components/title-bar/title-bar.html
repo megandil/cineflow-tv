@@ -1,0 +1,127 @@
+<!-- The window's own controls when it has no system frame (the see-through window the mpv player
+     needs on Windows): no bar of their own. The buttons sit at the right end of Stremio's top bar,
+     its empty space moves the window (preload/ui/titleBar.ts), and thin edges resize it. -->
+<div class="title-bar dx-window">
+    <div class="title-bar-buttons">
+        <div id="minimizeApp-btn" title="Minimize" class="button">
+            <svg viewBox="0 0 24 24">
+                <path d="M20,14H4V10H20" style="fill:white;"></path>
+            </svg>
+        </div>
+        <div id="maximizeApp-btn" title="Maximize" class="button">
+            <svg viewBox="0 0 24 24">
+                <path d="M3,3H21V21H3V3M5,5V19H19V5H5Z" style="fill:white;"></path>
+            </svg>
+        </div>
+        <div id="closeApp-btn" title="Close" class="button">
+            <svg viewBox="0 0 24 24" style="width: 22px; height: 22px;">
+                <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" style="fill:white;"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div class="dx-edge" data-edge="n"></div>
+    <div class="dx-edge" data-edge="s"></div>
+    <div class="dx-edge" data-edge="e"></div>
+    <div class="dx-edge" data-edge="w"></div>
+    <div class="dx-edge" data-edge="ne"></div>
+    <div class="dx-edge" data-edge="nw"></div>
+    <div class="dx-edge" data-edge="se"></div>
+    <div class="dx-edge" data-edge="sw"></div>
+
+    <style>
+        /* room for the three buttons at the right of every top bar (Stremio's own, a title page's,
+           the player's), so they never sit on top of Stremio's buttons */
+        body {
+            --dx-chrome-top: 0px;
+            --dx-window-buttons: 9.5rem;
+        }
+
+        #app [class*="horizontal-nav-bar"],
+        #app [class*="player-container"] [class*="player-nav"] {
+            padding-right: var(--dx-window-buttons) !important;
+        }
+
+        .title-bar.dx-window {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            /* above every overlay: the window buttons stay usable while a sheet or panel is open */
+            z-index: 2147483000;
+        }
+
+        .title-bar-buttons {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: var(--dx-nav-h, 4.25rem);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0 0.6rem;
+            pointer-events: auto;
+            transition: opacity 0.25s;
+        }
+
+        .title-bar-buttons .button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.6rem;
+            height: 2.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: background-color 0.15s, opacity 0.15s;
+        }
+
+        .title-bar-buttons .button:hover {
+            background-color: rgba(255, 255, 255, 0.12);
+            opacity: 1;
+        }
+
+        #closeApp-btn:hover {
+            background-color: #e81123;
+        }
+
+        .title-bar-buttons svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* These buttons sit outside Stremio's player, so hovering them can mark the player idle.
+           Keep them interactive while in use instead of hiding them out from under the pointer. */
+        body.dx-player-idle .title-bar-buttons:not(:hover):not(:focus-within) {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* resize handles along the edges and in the corners */
+        .dx-edge {
+            position: absolute;
+            pointer-events: auto;
+            /* Fully clear pixels pass mouse input through a transparent Windows window. */
+            background: rgba(0, 0, 0, 0.01);
+        }
+
+        .dx-edge[data-edge="n"] { top: 0; left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
+        .dx-edge[data-edge="s"] { bottom: 0; left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
+        .dx-edge[data-edge="e"] { right: 0; top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
+        .dx-edge[data-edge="w"] { left: 0; top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
+        .dx-edge[data-edge="ne"] { top: 0; right: 0; width: 10px; height: 10px; cursor: nesw-resize; }
+        .dx-edge[data-edge="sw"] { bottom: 0; left: 0; width: 10px; height: 10px; cursor: nesw-resize; }
+        .dx-edge[data-edge="nw"] { top: 0; left: 0; width: 10px; height: 10px; cursor: nwse-resize; }
+        .dx-edge[data-edge="se"] { bottom: 0; right: 0; width: 10px; height: 10px; cursor: nwse-resize; }
+
+        body.is-maximized .dx-edge,
+        body.is-fullscreen .dx-edge,
+        body.is-fullscreen .title-bar-buttons {
+            display: none !important;
+        }
+
+        body.is-fullscreen #app [class*="horizontal-nav-bar"],
+        body.is-fullscreen #app [class*="player-container"] [class*="player-nav"] {
+            padding-right: 0 !important;
+        }
+    </style>
+</div>
