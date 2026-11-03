@@ -488,7 +488,10 @@ class NativeHomeActivity : AppCompatActivity() {
     }
 
     private fun section(number: String, title: String, list: List<Meta>, type: String, autoResume: Boolean = false): View {
-        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            clipChildren = false
+        }
         val head = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -542,9 +545,12 @@ class NativeHomeActivity : AppCompatActivity() {
             if (firstRow == null) firstRow = this
             isFocusable = false
             overScrollMode = View.OVER_SCROLL_NEVER
+            // The focused card scales slightly and has a red outline: leave room for it
+            // inside the row instead of letting the RecyclerView clip its left edge.
             clipToPadding = false
-            setPadding(0, dp(2), dp(28), dp(2))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(164))
+            clipChildren = false
+            setPadding(dp(8), dp(6), dp(28), dp(6))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(172))
         }
         box.addView(rv)
         return box
