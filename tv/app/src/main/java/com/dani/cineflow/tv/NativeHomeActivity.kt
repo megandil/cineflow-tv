@@ -642,34 +642,29 @@ class NativeHomeActivity : AppCompatActivity() {
         thread(name = "cineflow-native-home", isDaemon = true) {
             // Refresh the addon list once on launch so removals made in Stremio are reflected here.
             if (StremioSession.isLoggedIn(this)) StremioSession.addons(this, force = true)
-            val movies = fetch("movie", "top")
-            val films = fetch("movie", "imdbRating")
-            val series = fetch("series", "top")
+            val addonCatalogs = if (StremioSession.isLoggedIn(this)) StremioSession.catalogs(this) else emptyList()
+            val tmdbCatalogs = addonCatalogs.filter {
+                it.addon.contains("Movie Database", ignoreCase = true) ||
+                    it.addon.contains("TMDB", ignoreCase = true)
+            }
+            // Prefer the Spanish TMDB catalogs over Cinemeta's English rows.
+            val tmdbMovies = tmdbCatalogs.filter { it.type == "movie" }.distinctBy { it.title.lowercase(Locale.ROOT) }
+            val tmdbSeries = tmdbCatalogs.filter { it.type == "series" }.distinctBy { it.title.lowercase(Locale.ROOT) }
+            var movies = tmdbMovies.getOrNull(0)?.let { fetchCatalog(it.url, it.type) }.orEmpty()
+            var films = tmdbMovies.getOrNull(1)?.let { fetchCatalog(it.url, it.type) }.orEmpty()
+            var series = tmdbSeries.getOrNull(0)?.let { fetchCatalog(it.url, it.type) }.orEmpty()
+            if (movies.isEmpty() && films.isEmpty() && series.isEmpty()) {
+                movies = fetch("movie", "top")
+                films = fetch("movie", "imdbRating")
+                series = fetch("series", "top")
+            }
             val library = if (StremioSession.isLoggedIn(this)) StremioSession.library(this) else emptyList()
             runOnUiThread {
                 moviesCache = movies
                 filmsCache = films
                 seriesCache = series
                 libraryCache = library
-                render(movies, films, series, library, extraCatalogsCache)
-            }
-            // Addon catalogs load after Home is usable: a slow catalog must never block
-            // the hero and the Cinemeta rows.
-            if (StremioSession.isLoggedIn(this)) {
-                val extras = StremioSession.catalogs(this)
-                    .filter { !it.addon.equals("Cinemeta", ignoreCase = true) }
-                    .distinctBy { it.title.lowercase(Locale.ROOT) }
-                    .sortedBy { if (it.addon.contains("TMDB", ignoreCase = true)) 0 else 1 }
-                    .take(2)
-                    .mapNotNull { cat ->
-                        val items = fetchCatalog(cat.url, cat.type)
-                        if (items.isEmpty()) null else ExtraRow(cat.title, cat.type, items)
-                    }
-                if (extras.isNotEmpty()) runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    extraCatalogsCache = extras
-                    render(moviesCache, filmsCache, seriesCache, libraryCache, extras)
-                }
+                render(movies, films, series, library, emptyList())
             }
         }
     }
