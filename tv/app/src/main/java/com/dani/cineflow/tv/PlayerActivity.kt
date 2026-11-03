@@ -136,6 +136,10 @@ class PlayerActivity : AppCompatActivity() {
         clock = findViewById(R.id.clock)
         seekFlash = findViewById(R.id.seek_flash)
         skipButton = findViewById(R.id.skip_button)
+        // The Skip chip must never steal D-pad focus from the playback controls. OK still
+        // activates it while the controls are hidden, and Up opens the normal controls.
+        skipButton.isFocusable = false
+        skipButton.isFocusableInTouchMode = false
         skipButton.setOnClickListener { doSkip() }
 
         streamJson = intent.getStringExtra(EXTRA_STREAM)
@@ -376,7 +380,6 @@ class PlayerActivity : AppCompatActivity() {
             else -> "Saltar créditos"
         }
         skipButton.visibility = View.VISIBLE
-        if (!playerView.isControllerFullyVisible) skipButton.requestFocus()
     }
 
     private fun doSkip(seg: SkipSegment? = showing) {
