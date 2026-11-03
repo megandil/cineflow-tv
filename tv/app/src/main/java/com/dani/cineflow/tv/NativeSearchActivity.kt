@@ -187,6 +187,19 @@ class NativeSearchActivity : AppCompatActivity() {
         return root
     }
 
+    private fun loadCatalog(url: String, title: String, type: String) {
+        generation++
+        val gen = generation
+        status.text = "CARGANDO · " + title.uppercase(Locale.ROOT)
+        thread(name = "cineflow-addon-catalog", isDaemon = true) {
+            val items = fetchJson(url, type)
+            runOnUiThread {
+                if (gen != generation || isFinishing || isDestroyed) return@runOnUiThread
+                renderResults(items, title.uppercase(Locale.ROOT))
+            }
+        }
+    }
+
     private fun showDefaults() {
         generation++
         val gen = generation
@@ -390,6 +403,9 @@ class NativeSearchActivity : AppCompatActivity() {
     }
 
     companion object {
+        const val EXTRA_CATALOG_URL = "cineflow.catalog.url"
+        const val EXTRA_CATALOG_TITLE = "cineflow.catalog.title"
+        const val EXTRA_CATALOG_TYPE = "cineflow.catalog.type"
         private val INK = Color.rgb(7,8,11)
         private val CARD = Color.rgb(18,20,26)
         private val BORDER = Color.rgb(48,51,60)

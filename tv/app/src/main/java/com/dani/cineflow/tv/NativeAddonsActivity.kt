@@ -60,7 +60,7 @@ class NativeAddonsActivity : AppCompatActivity() {
             setPadding(0, dp(5), 0, dp(3))
         })
         content.addView(TextView(this).apply {
-            text = "Instalados en tu cuenta de Stremio. CineFlow los usa para buscar proveedores."
+            text = "Instalados en tu cuenta de Stremio. Pulsa un addon para abrir sus catálogos."
             setTextColor(Color.rgb(160,164,174))
             textSize = 11f
             setPadding(0, 0, 0, dp(8))
@@ -154,9 +154,36 @@ class NativeAddonsActivity : AppCompatActivity() {
                     row.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
                         v.background = rounded(if (has) Color.rgb(38,42,50) else if (index % 2 == 0) CARD else Color.rgb(15,17,22), 9, if (has) CORAL else BORDER, if (has) 2 else 1)
                     }
+                    row.setOnClickListener { chooseCatalog(addon) }
                     list.addView(row)
                 }
                 list.post { list.getChildAt(0)?.requestFocus() }
+            }
+        }
+    }
+
+    private fun chooseCatalog(addon: StremioSession.Addon) {
+        status.text = "Cargando catálogos de ${addon.name}…"
+        thread(name = "cineflow-addon-catalogs", isDaemon = true) {
+            val catalogs = StremioSession.catalogs(this).filter { it.addon == addon.name }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (catalogs.isEmpty()) {
+                    status.text = "${addon.name} no publica catálogos."
+                    return@runOnUiThread
+                }
+                val labels = catalogs.map { "${it.title}  ·  ${if (it.type == "series") "Series" else "Películas"}" }.toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle(addon.name)
+                    .setItems(labels) { _, which ->
+                        val cat = catalogs[which]
+                        startActivity(Intent(this, NativeSearchActivity::class.java)
+                            .putExtra(NativeSearchActivity.EXTRA_CATALOG_URL, cat.url)
+                            .putExtra(NativeSearchActivity.EXTRA_CATALOG_TITLE, "${addon.name} · ${cat.title}")
+                            .putExtra(NativeSearchActivity.EXTRA_CATALOG_TYPE, cat.type))
+                    }
+                    .setNegativeButton("Cerrar", null)
+                    .show()
             }
         }
     }
