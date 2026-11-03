@@ -6,7 +6,7 @@ plugins {
 }
 
 // CineFlow version. Bump this when publishing a GitHub release.
-val cineflowVersion = "2.24.16"
+val cineflowVersion = "2.24.17"
 val versionParts = cineflowVersion.split(".").map { it.toInt() }
 
 // Release signing: tv/keystore.properties (not in git) or the CINEFLOW_KEYSTORE* environment variables in CI

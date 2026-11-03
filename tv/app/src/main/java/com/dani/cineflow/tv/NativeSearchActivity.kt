@@ -191,8 +191,9 @@ class NativeSearchActivity : AppCompatActivity() {
         recycler = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@NativeSearchActivity, 4)
             adapter = this@NativeSearchActivity.adapter
-            setPadding(0, 0, 0, dp(8))
+            setPadding(dp(6), dp(4), dp(6), dp(10))
             clipToPadding = false
+            clipChildren = false
             itemAnimator = null
             overScrollMode = View.OVER_SCROLL_NEVER
             setHasFixedSize(true)
@@ -376,13 +377,14 @@ class NativeSearchActivity : AppCompatActivity() {
                     background = o.optString("background").takeIf { it.isNotBlank() },
                     releaseInfo = o.optString("releaseInfo").takeIf { it.isNotBlank() },
                     rating = o.optString("imdbRating").takeIf { it.isNotBlank() },
+                    description = o.optString("description").takeIf { it.isNotBlank() },
                 )
             }
         } catch (_: Exception) { emptyList() }
     }
 
     private inner class ResultAdapter(private var items: List<Meta>) : RecyclerView.Adapter<ResultAdapter.Holder>() {
-        inner class Holder(val card: LinearLayout, val art: FrameLayout, val image: ImageView, val name: TextView, val sub: TextView) : RecyclerView.ViewHolder(card)
+        inner class Holder(val card: LinearLayout, val art: FrameLayout, val image: ImageView, val name: TextView, val sub: TextView, val desc: TextView) : RecyclerView.ViewHolder(card)
 
         fun replace(list: List<Meta>) { items = list; notifyDataSetChanged() }
 
@@ -407,6 +409,17 @@ class NativeSearchActivity : AppCompatActivity() {
                 layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             }
             art.addView(image)
+            val desc = TextView(this@NativeSearchActivity).apply {
+                setTextColor(Color.rgb(242,235,221))
+                textSize = 7.2f
+                maxLines = 3
+                ellipsize = TextUtils.TruncateAt.END
+                setPadding(dp(7), dp(5), dp(7), dp(5))
+                setBackgroundColor(0xD907080B.toInt())
+                visibility = View.GONE
+                layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
+            }
+            art.addView(desc)
             val name = TextView(this@NativeSearchActivity).apply {
                 setTextColor(CREAM)
                 textSize = 10.5f
@@ -424,16 +437,21 @@ class NativeSearchActivity : AppCompatActivity() {
             card.addView(art)
             card.addView(name)
             card.addView(sub)
-            return Holder(card, art, image, name, sub)
+            return Holder(card, art, image, name, sub, desc)
         }
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val meta = items[position]
             holder.name.text = meta.name
             holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("  ·  ")
+            holder.desc.text = meta.description.orEmpty()
+            holder.desc.visibility = View.GONE
             NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 3)
+            holder.card.background = rounded(Color.TRANSPARENT, 12, Color.TRANSPARENT, 0)
             holder.card.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                holder.art.background = rounded(if (has) Color.rgb(40,43,52) else CARD, 12, if (has) CORAL else BORDER, if (has) 2 else 1)
+                holder.card.background = rounded(if (has) Color.rgb(31,20,21) else Color.TRANSPARENT, 12,
+                    if (has) CORAL else Color.TRANSPARENT, if (has) 2 else 0)
+                holder.desc.visibility = if (has && holder.desc.text.isNotBlank()) View.VISIBLE else View.GONE
                 holder.name.setTextColor(if (has) Color.WHITE else CREAM)
                 v.animate().scaleX(if (has) 1.035f else 1f).scaleY(if (has) 1.035f else 1f).setDuration(120).start()
             }
@@ -500,7 +518,7 @@ class NativeSearchActivity : AppCompatActivity() {
 
     private data class Meta(
         val id: String, val type: String, val name: String, val poster: String?, val background: String?,
-        val releaseInfo: String?, val rating: String?,
+        val releaseInfo: String?, val rating: String?, val description: String?,
     )
 
     private class BackAwareEditText(context: Context) : androidx.appcompat.widget.AppCompatEditText(context) {
