@@ -601,9 +601,7 @@ class NativeDetailActivity : AppCompatActivity() {
                 }
             }
             val metaId = m.optString("id").ifBlank { id }
-            val tmdbId = m.optLong("moviedb_id").takeIf { it > 0 }
-                ?: metaId.removePrefix("tmdb:").toLongOrNull()
-            val base = Meta(
+            Meta(
                 id = metaId,
                 type = m.optString("type").ifBlank { type },
                 name = m.optString("name"),
@@ -615,15 +613,7 @@ class NativeDetailActivity : AppCompatActivity() {
                 description = m.optString("description").takeIf { it.isNotBlank() },
                 genres = m.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
                 videos = videos,
-                tmdbId = tmdbId,
             )
-            val title = TitleLocalizer.spanish(this, listOf(TitleLocalizer.Lookup(
-                key = base.id,
-                imdb = base.id.takeIf { it.startsWith("tt") },
-                tmdb = tmdbId,
-                type = base.type,
-            )))[base.id]
-            if (title.isNullOrBlank() || title == base.name) base else base.copy(name = title)
         } catch (_: Exception) {
             null
         }
@@ -721,7 +711,7 @@ class NativeDetailActivity : AppCompatActivity() {
     private data class Meta(
         val id: String, val type: String, val name: String, val poster: String?, val background: String?,
         val releaseInfo: String?, val rating: String?, val runtime: String?, val description: String?,
-        val genres: List<String>?, val videos: List<Video>?, val tmdbId: Long?,
+        val genres: List<String>?, val videos: List<Video>?,
     )
     private data class Video(val id: String, val season: Int?, val episode: Int?, val name: String?, val title: String?, val thumbnail: String?, val overview: String?)
     private data class Stream(

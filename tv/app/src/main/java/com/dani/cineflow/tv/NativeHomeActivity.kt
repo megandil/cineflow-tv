@@ -338,14 +338,14 @@ class NativeHomeActivity : AppCompatActivity() {
         val continueList = ArrayList<Meta>()
         for (item in local) {
             if (!seen.add(item.id)) continue
-            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (item.season > 0) "T${item.season} E${item.episode}" else null, null, null, null, null))
+            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (item.season > 0) "T${item.season} E${item.episode}" else null, null, null, null))
         }
         for (item in library.filter { it.timeOffset > 0 }.sortedByDescending { it.timeOffset }) {
             if (!seen.add(item.id)) continue
             val parts = item.videoId?.split(':').orEmpty()
             val season = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 0
             val episode = parts.getOrNull(parts.size - 1)?.toIntOrNull() ?: 0
-            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (season > 0) "T$season E$episode" else "Continuar", null, null, null, null))
+            continueList.add(Meta(item.id, item.type, item.name, item.poster, item.poster, if (season > 0) "T$season E$episode" else "Continuar", null, null, null))
         }
         val continueItems = continueList.take(12)
         continueTargets.clear()
@@ -659,6 +659,7 @@ class NativeHomeActivity : AppCompatActivity() {
                 val extras = StremioSession.catalogs(this)
                     .filter { !it.addon.equals("Cinemeta", ignoreCase = true) }
                     .distinctBy { it.title.lowercase(Locale.ROOT) }
+                    .sortedBy { if (it.addon.contains("TMDB", ignoreCase = true)) 0 else 1 }
                     .take(2)
                     .mapNotNull { cat ->
                         val items = fetchCatalog(cat.url, cat.type)
@@ -695,10 +696,9 @@ class NativeHomeActivity : AppCompatActivity() {
                     rating = o.optString("imdbRating").takeIf { it.isNotBlank() },
                     description = o.optString("description").takeIf { it.isNotBlank() },
                     genres = o.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
-                    tmdbId = o.optLong("moviedb_id").takeIf { it > 0 },
                 )
             }
-            localize(parsed)
+            parsed
         } catch (_: Exception) { emptyList() }
     }
 
@@ -726,27 +726,12 @@ class NativeHomeActivity : AppCompatActivity() {
                     rating = o.optString("imdbRating").takeIf { it.isNotBlank() },
                     description = o.optString("description").takeIf { it.isNotBlank() },
                     genres = o.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
-                    tmdbId = o.optLong("moviedb_id").takeIf { it > 0 },
                 )
             }
-            localize(parsed)
+            parsed
         } catch (_: Exception) {
             emptyList()
         }
-    }
-
-    private fun localize(items: List<Meta>): List<Meta> {
-        if (items.isEmpty()) return items
-        val translations = TitleLocalizer.spanish(this, items.map {
-            TitleLocalizer.Lookup(
-                key = it.id,
-                imdb = it.id.takeIf { id -> id.startsWith("tt") },
-                tmdb = it.tmdbId,
-                type = it.type,
-            )
-        })
-        if (translations.isEmpty()) return items
-        return items.map { item -> translations[item.id]?.let { item.copy(name = it) } ?: item }
     }
 
     private data class Meta(
@@ -759,7 +744,6 @@ class NativeHomeActivity : AppCompatActivity() {
         val rating: String?,
         val description: String?,
         val genres: List<String>?,
-        val tmdbId: Long?,
     )
 
     private fun rounded(color: Int, radius: Int, stroke: Int, strokeWidth: Int): GradientDrawable = GradientDrawable().apply {

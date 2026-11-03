@@ -129,7 +129,7 @@ object StremioSession {
     /** Meta from the addon that actually owns the id (PeLis uses tmdb: ids, Cinemeta uses tt). */
     fun metaJson(context: Context, type: String, id: String): JSONObject? {
         val descriptors = addonDescriptors(context)
-        data class Candidate(val base: String, val priority: Int)
+        data class Candidate(val base: String, val priority: Int, val addon: String)
         val candidates = mutableListOf<Candidate>()
         for (descriptor in descriptors) {
             val manifest = descriptor.optJSONObject("manifest") ?: continue
@@ -152,9 +152,11 @@ object StremioSession {
             }
             if (!supportsMeta) continue
             val priority = if (prefixes.any { id.startsWith(it) }) 0 else 1
-            candidates += Candidate(transport.removeSuffix("/manifest.json").trimEnd('/'), priority)
+            val addon = manifest.optString("name")
+            candidates += Candidate(transport.removeSuffix("/manifest.json").trimEnd('/'), priority, addon)
         }
-        for (candidate in candidates.sortedBy { it.priority }) {
+        // Prefer a metadata addon (TMDB/PeLis) over Cinemeta when both support the id.
+        for (candidate in candidates.sortedWith(compareBy<Candidate> { it.priority }.thenBy { if (it.addon.equals("Cinemeta", true)) 1 else 0 })) {
             val url = "${candidate.base}/meta/$type/${Uri.encode(id, ":")}.json"
             val raw = get(url) ?: continue
             val meta = JSONObject(raw).optJSONObject("meta") ?: continue
