@@ -451,11 +451,16 @@ class NativeDetailActivity : AppCompatActivity() {
 
     private fun loadStreams(videoId: String, openPicker: Boolean = false, autoplay: Boolean = true) {
         val m = meta ?: return
+        // TMDB catalogs use tmdb: ids, while Peerflix/Torrentio expect IMDb ids. The TMDB meta
+        // carries imdb_id, so query providers with the IMDb equivalent (keeping :season:episode).
+        val lookupId = if (m.imdbId != null && videoId.startsWith("tmdb:")) {
+            m.imdbId + videoId.removePrefix(m.id)
+        } else videoId
         streamsLoading = true
         streams = emptyList()
         status.text = "Buscando proveedores…"
         thread(name = "cineflow-streams", isDaemon = true) {
-            val list = fetchStreams(m.type, videoId)
+            val list = fetchStreams(m.type, lookupId)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 streamsLoading = false
@@ -613,6 +618,7 @@ class NativeDetailActivity : AppCompatActivity() {
                 description = m.optString("description").takeIf { it.isNotBlank() },
                 genres = m.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
                 videos = videos,
+                imdbId = m.optString("imdb_id").takeIf { it.startsWith("tt") },
             )
         } catch (_: Exception) {
             null
@@ -711,7 +717,7 @@ class NativeDetailActivity : AppCompatActivity() {
     private data class Meta(
         val id: String, val type: String, val name: String, val poster: String?, val background: String?,
         val releaseInfo: String?, val rating: String?, val runtime: String?, val description: String?,
-        val genres: List<String>?, val videos: List<Video>?,
+        val genres: List<String>?, val videos: List<Video>?, val imdbId: String?,
     )
     private data class Video(val id: String, val season: Int?, val episode: Int?, val name: String?, val title: String?, val thumbnail: String?, val overview: String?)
     private data class Stream(

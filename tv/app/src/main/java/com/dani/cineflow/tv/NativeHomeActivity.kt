@@ -658,13 +658,22 @@ class NativeHomeActivity : AppCompatActivity() {
                 films = fetch("movie", "imdbRating")
                 series = fetch("series", "top")
             }
+            val peLisRows = addonCatalogs
+                .filter { it.addon.equals("PeLis", ignoreCase = true) }
+                .distinctBy { it.title.lowercase(Locale.ROOT) }
+                .take(2)
+                .mapNotNull { cat ->
+                    val items = fetchCatalog(cat.url, cat.type)
+                    if (items.isEmpty()) null else ExtraRow(cat.title, cat.type, items)
+                }
             val library = if (StremioSession.isLoggedIn(this)) StremioSession.library(this) else emptyList()
             runOnUiThread {
                 moviesCache = movies
                 filmsCache = films
                 seriesCache = series
                 libraryCache = library
-                render(movies, films, series, library, emptyList())
+                extraCatalogsCache = peLisRows
+                render(movies, films, series, library, peLisRows)
             }
         }
     }
