@@ -141,6 +141,27 @@ class PlayerActivity : AppCompatActivity() {
         skipButton.isFocusable = false
         skipButton.isFocusableInTouchMode = false
         skipButton.setOnClickListener { doSkip() }
+        // While the controls are up, Skip is part of the controller. Down/Left returns
+        // to the normal play bar; OK activates the skip.
+        skipButton.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN &&
+                (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT)) {
+                playerView.showController()
+                playerView.requestFocus()
+                true
+            } else false
+        }
+        playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+            if (visibility == View.VISIBLE && skipButton.visibility == View.VISIBLE) {
+                skipButton.isFocusable = true
+                skipButton.isFocusableInTouchMode = true
+                skipButton.requestFocus()
+            } else if (visibility != View.VISIBLE) {
+                skipButton.isFocusable = false
+                skipButton.isFocusableInTouchMode = false
+                if (skipButton.hasFocus()) playerView.requestFocus()
+            }
+        })
 
         streamJson = intent.getStringExtra(EXTRA_STREAM)
         val stream = JSONObject(streamJson ?: "{}")
@@ -372,6 +393,9 @@ class PlayerActivity : AppCompatActivity() {
         showing = seg
         if (seg == null) {
             skipButton.visibility = View.GONE
+            skipButton.isFocusable = false
+            skipButton.isFocusableInTouchMode = false
+            if (skipButton.hasFocus()) playerView.requestFocus()
             return
         }
         skipButton.text = when (seg.type) {
@@ -380,6 +404,11 @@ class PlayerActivity : AppCompatActivity() {
             else -> "Saltar créditos"
         }
         skipButton.visibility = View.VISIBLE
+        if (playerView.isControllerFullyVisible) {
+            skipButton.isFocusable = true
+            skipButton.isFocusableInTouchMode = true
+            skipButton.requestFocus()
+        }
     }
 
     private fun doSkip(seg: SkipSegment? = showing) {
@@ -389,6 +418,8 @@ class PlayerActivity : AppCompatActivity() {
         exo.seekTo(segmentEnd(s, duration).coerceAtMost(duration))
         showing = null
         skipButton.visibility = View.GONE
+        skipButton.isFocusable = false
+        skipButton.isFocusableInTouchMode = false
         playerView.requestFocus()
     }
 
