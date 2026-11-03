@@ -468,7 +468,7 @@ class NativeHomeActivity : AppCompatActivity() {
                     val now = android.os.SystemClock.uptimeMillis()
                     // A quick double-tap must not fly into the rail. The menu only opens on a
                     // deliberate later press (or while the key is held and repeating).
-                    if (firstCardLeftPending && (held || now - firstCardLeftAt >= 450L)) {
+                    if (firstCardLeftPending && (held || now - firstCardLeftAt >= 1000L)) {
                         firstCardLeftPending = false
                         firstCardLeftAt = 0L
                         railRows.firstOrNull()?.requestFocus()
