@@ -93,12 +93,12 @@ La app no aloja contenido. Los catálogos, metadatos y proveedores vienen de los
     <td align="center"><img src="docs/screenshots/profiles.png" alt="Perfiles" width="420"><br><sub><b>Perfiles</b> · historial y ajustes separados</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/explore.png" alt="Explorar" width="420"><br><sub><b>Explorar</b> · cuadrícula y categorías</sub></td>
     <td align="center"><img src="docs/screenshots/continue-menu.png" alt="Continuar viendo" width="420"><br><sub><b>Continuar viendo</b> · quitar con MENÚ</sub></td>
+    <td align="center"><img src="docs/screenshots/update.png" alt="Actualización" width="420"><br><sub><b>Actualización</b> · desde GitHub</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/settings.png" alt="Ajustes" width="420"><br><sub><b>Ajustes</b> · ajustes por perfil</sub></td>
-    <td align="center"><img src="docs/screenshots/update.png" alt="Actualización" width="420"><br><sub><b>Actualización</b> · desde GitHub</sub></td>
+    <td align="center"><img src="docs/screenshots/focus.png" alt="Foco" width="420"><br><sub><b>Navegación</b> · borde y sinopsis al enfocar</sub></td>
   </tr>
 </table>
 
