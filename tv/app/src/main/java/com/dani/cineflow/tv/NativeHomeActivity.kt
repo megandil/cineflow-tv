@@ -64,6 +64,7 @@ class NativeHomeActivity : AppCompatActivity() {
         setContentView(buildUi())
         loadCatalogs()
         UpdateManager.checkAndPrompt(this, manual = false)
+        CatalogPrompt.checkIfNeeded(this) { loadCatalogs() }
     }
 
     override fun onResume() {
@@ -77,6 +78,9 @@ class NativeHomeActivity : AppCompatActivity() {
         if (moviesCache.isNotEmpty() || seriesCache.isNotEmpty()) {
             render(moviesCache, filmsCache, seriesCache, libraryCache, extraCatalogsCache)
         }
+        // Covers returning from the QR login screen: the addon check runs again once the
+        // account is available. CatalogPrompt rate-limits itself.
+        CatalogPrompt.checkIfNeeded(this) { loadCatalogs() }
     }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
