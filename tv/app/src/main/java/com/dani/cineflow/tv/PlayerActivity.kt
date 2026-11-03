@@ -67,11 +67,14 @@ class PlayerActivity : AppCompatActivity() {
 
     // Skip intro / recap / credits: the episode's times (seconds; end -1 = to the end), whether CineFlow
     // skips by itself ("intro": intros and recaps, "all": credits too), and which were skipped already
-    private class Segment(val type: String, val start: Double, val end: Double)
-    private var segments: List<Segment> = emptyList()
+    data class SkipSegment(val type: String, val start: Double, val end: Double)
+    private var segments: List<SkipSegment> = emptyList()
+    private var imdbId: String? = null
+    private var episodeSeason = 0
+    private var episodeNumber = 0
     private var autoSkip = "off"
-    private val autoSkipped = mutableSetOf<Segment>()
-    private var showing: Segment? = null
+    private val autoSkipped = mutableSetOf<SkipSegment>()
+    private var showing: SkipSegment? = null
     private lateinit var skipButton: TextView
     private var streamJson: String? = null
     private var openDetailOnBack = false
@@ -140,6 +143,9 @@ class PlayerActivity : AppCompatActivity() {
         openDetailOnBack = stream.optBoolean("openDetailOnBack", false)
         nativeMetaId = stream.optString("metaId").takeIf { it.isNotBlank() }
         nativeMetaType = stream.optString("metaType", "movie")
+        imdbId = stream.optString("imdbId").takeIf { it.isNotBlank() }
+        episodeSeason = stream.optInt("season", 0)
+        episodeNumber = stream.optInt("episode", 0)
         nextVideoId = stream.optString("nextVideoId").takeIf { it.isNotBlank() }
         nextSeason = stream.optInt("nextSeason", 0)
         nextEpisode = stream.optInt("nextEpisode", 0)
@@ -151,7 +157,7 @@ class PlayerActivity : AppCompatActivity() {
                 val o = list.optJSONObject(i) ?: return@mapNotNull null
                 val type = o.optString("type")
                 if (type !in setOf("intro", "recap", "credits")) return@mapNotNull null
-                Segment(type, o.optDouble("start", 0.0), if (o.isNull("end")) -1.0 else o.optDouble("end", -1.0))
+                SkipSegment(type, o.optDouble("start", 0.0), if (o.isNull("end")) -1.0 else o.optDouble("end", -1.0))
             }
         } ?: emptyList()
         autoSkip = stream.optString("autoSkip", "off")
@@ -288,6 +294,16 @@ class PlayerActivity : AppCompatActivity() {
         handler.postDelayed(reportProgress, PROGRESS_INTERVAL_MS)
         if (showClock) handler.post(updateClock)
         if (segments.isNotEmpty()) handler.postDelayed(checkSkip, 500)
+        if (imdbId != null && episodeSeason > 0 && episodeNumber > 0) {
+            thread(name = "cineflow-introdb", isDaemon = true) {
+                val extra = IntroDb.segments(imdbId!!, episodeSeason, episodeNumber)
+                if (extra.isNotEmpty()) runOnUiThread {
+                    if (closed || isFinishing || isDestroyed) return@runOnUiThread
+                    segments = segments + extra
+                    handler.post(checkSkip)
+                }
+            }
+        }
         if (torrent) handler.post(torrentStatus)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -333,7 +349,7 @@ class PlayerActivity : AppCompatActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    private fun segmentEnd(s: Segment, durationMs: Long): Long =
+    private fun segmentEnd(s: SkipSegment, durationMs: Long): Long =
         if (s.end < 0) durationMs else (s.end * 1000).toLong()
 
     private fun updateSkip() {
@@ -355,15 +371,15 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
         skipButton.text = when (seg.type) {
-            "intro" -> "Skip intro"
-            "recap" -> "Skip recap"
-            else -> "Skip credits"
+            "intro" -> "Saltar intro"
+            "recap" -> "Saltar resumen"
+            else -> "Saltar créditos"
         }
         skipButton.visibility = View.VISIBLE
         if (!playerView.isControllerFullyVisible) skipButton.requestFocus()
     }
 
-    private fun doSkip(seg: Segment? = showing) {
+    private fun doSkip(seg: SkipSegment? = showing) {
         val exo = player ?: return
         val s = seg ?: return
         val duration = exo.duration.takeIf { it != C.TIME_UNSET } ?: return

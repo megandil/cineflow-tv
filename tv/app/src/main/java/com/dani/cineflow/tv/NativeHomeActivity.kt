@@ -400,13 +400,13 @@ class NativeHomeActivity : AppCompatActivity() {
         val continueItems = continueList.take(12)
         continueTargets.clear()
         for (item in local) {
-            continueTargets[item.id] = DirectPlayback.Target(item.id, item.type, item.name, item.poster, item.videoId, item.position, item.season, item.episode, item.episodeTitle)
+            continueTargets[item.id] = DirectPlayback.Target(item.id, item.type, item.name, item.poster, item.videoId, item.position, item.season, item.episode, item.episodeTitle, item.videoId?.substringBefore(":")?.takeIf { it.startsWith("tt") })
         }
         for (item in library.filter { it.timeOffset > 0 }) {
             val parts = item.videoId?.substringAfterLast(':')?.let { _ -> item.videoId.split(':') } ?: emptyList()
             val season = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 0
             val episode = parts.getOrNull(parts.size - 1)?.toIntOrNull() ?: 0
-            continueTargets.putIfAbsent(item.id, DirectPlayback.Target(item.id, item.type, item.name, item.poster, item.videoId, item.timeOffset, season, episode, null))
+            continueTargets.putIfAbsent(item.id, DirectPlayback.Target(item.id, item.type, item.name, item.poster, item.videoId, item.timeOffset, season, episode, null, item.videoId?.substringBefore(":")?.takeIf { it.startsWith("tt") }))
         }
         if (continueItems.isNotEmpty()) rows.addView(section("", "CONTINUAR VIENDO", continueItems, "movie", autoResume = true))
         if (movies.isNotEmpty()) rows.addView(section("", "TENDENCIAS", movies, "movie"))
@@ -415,8 +415,8 @@ class NativeHomeActivity : AppCompatActivity() {
         for (row in extraCatalogs) {
             if (row.items.isNotEmpty()) rows.addView(section("", row.title.uppercase(Locale.ROOT), row.items, row.type))
         }
-        rows.addView(buildLive())
         rows.addView(buildDiscovery())
+        rows.addView(buildLive())
         rows.addView(TextView(this).apply {
             text = "CINEFLOW · UNA EXPERIENCIA PROPIA"
             setTextColor(Color.rgb(92,96,106))

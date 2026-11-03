@@ -540,6 +540,7 @@ class NativeDetailActivity : AppCompatActivity() {
             .put("startMs", resumeMs)
             .put("hash", "native:${m.id}")
             .put("videoId", video?.id ?: m.id)
+            .put("imdbId", m.imdbId.orEmpty())
             .put("season", video?.season ?: 0)
             .put("episode", video?.episode ?: 0)
             .put("episodeTitle", video?.title ?: video?.name ?: "")

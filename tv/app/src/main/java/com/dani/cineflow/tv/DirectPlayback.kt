@@ -19,6 +19,7 @@ object DirectPlayback {
         val season: Int = 0,
         val episode: Int = 0,
         val episodeTitle: String? = null,
+        val imdbId: String? = null,
     )
 
     fun play(
@@ -71,6 +72,7 @@ object DirectPlayback {
                 .put("name", target.name)
                 .put("poster", target.poster.orEmpty())
                 .put("videoId", videoId)
+                .put("imdbId", target.imdbId.orEmpty())
                 .put("season", target.season)
                 .put("episode", target.episode)
                 .put("episodeTitle", target.episodeTitle.orEmpty())
