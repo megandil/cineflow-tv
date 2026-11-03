@@ -34,6 +34,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 /** Explore: a 4-column catalog grid with a normal, explicit search (no autosearch). */
@@ -44,6 +45,7 @@ class NativeSearchActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var categoryRow: LinearLayout
     private var generation = 0
+    private val searchCache = HashMap<String, List<Meta>>()
     private var tmdbBase: String? = null
     private var categories: List<Category> = emptyList()
     private var categoryViews: MutableList<TextView> = mutableListOf()
@@ -333,25 +335,55 @@ class NativeSearchActivity : AppCompatActivity() {
             status.text = "Escribe al menos 2 letras y pulsa Buscar."
             return
         }
+        val cacheKey = text.lowercase(Locale.ROOT)
+        searchCache[cacheKey]?.let { cached ->
+            generation++
+            renderResults(cached, "RESULTADOS")
+            return
+        }
         generation++
         val gen = generation
         status.text = "Buscando «$text»…"
-        thread(name = "cineflow-search", isDaemon = true) {
-            val encoded = URLEncoder.encode(text, "UTF-8")
-            val base = tmdbBase
-            val movies: List<Meta>
-            val series: List<Meta>
-            if (base != null) {
-                movies = fetchJson("$base/catalog/movie/tmdb.search/search=$encoded.json", "movie")
-                series = fetchJson("$base/catalog/series/tmdb.search/search=$encoded.json", "series")
-            } else {
-                movies = fetchSearch("movie", encoded)
-                series = fetchSearch("series", encoded)
-            }
+        val encoded = URLEncoder.encode(text, "UTF-8")
+        val base = tmdbBase
+        val results = mutableListOf<Meta>()
+        val remaining = AtomicInteger(2)
+        val lock = Any()
+
+        fun publish(found: List<Meta>) {
             runOnUiThread {
                 if (gen != generation || isFinishing || isDestroyed) return@runOnUiThread
-                renderResults((movies + series).distinctBy { it.id }, "RESULTADOS")
+                synchronized(lock) {
+                    results += found
+                    val combined = results.distinctBy { it.id }
+                    if (combined.isNotEmpty()) {
+                        renderResults(combined, "RESULTADOS", focusResults = results.size == found.size)
+                    }
+                    if (remaining.decrementAndGet() == 0) {
+                        searchCache[cacheKey] = combined.take(80)
+                        if (results.size > 20) {
+                            while (searchCache.size > 20) searchCache.remove(searchCache.keys.first())
+                        }
+                        if (combined.isEmpty()) {
+                            adapter.replace(emptyList())
+                            status.text = "No hay resultados para «$text»."
+                        }
+                    }
+                }
             }
+        }
+
+        // Movie and series searches are independent: launch both at once instead of waiting
+        // for the movie request to finish before asking for series.
+        thread(name = "cineflow-search-movies", isDaemon = true) {
+            val movies = if (base != null) fetchJson("$base/catalog/movie/tmdb.search/search=$encoded.json", "movie")
+            else fetchSearch("movie", encoded)
+            publish(movies)
+        }
+        thread(name = "cineflow-search-series", isDaemon = true) {
+            val series = if (base != null) fetchJson("$base/catalog/series/tmdb.search/search=$encoded.json", "series")
+            else fetchSearch("series", encoded)
+            publish(series)
         }
     }
 
@@ -370,8 +402,8 @@ class NativeSearchActivity : AppCompatActivity() {
     private fun fetchJson(url: String, fallbackType: String): List<Meta> {
         return try {
             val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10_000
-                readTimeout = 18_000
+                connectTimeout = 6_000
+                readTimeout = 8_000
                 setRequestProperty("User-Agent", "CineFlow-TV")
             }
             val body = connection.inputStream.bufferedReader().use { it.readText() }
