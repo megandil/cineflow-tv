@@ -73,6 +73,8 @@ object Profiles {
         save(context, next, nextActive)
         context.getSharedPreferences("cineflow-native-progress", Context.MODE_PRIVATE).edit()
             .remove("items_$id").apply()
+        context.getSharedPreferences("cineflow-profile-library", Context.MODE_PRIVATE).edit()
+            .remove("items_$id").apply()
         val settings = context.getSharedPreferences("cineflow-settings", Context.MODE_PRIVATE)
         val editor = settings.edit()
         for (key in settings.all.keys) {

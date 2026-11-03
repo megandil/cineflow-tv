@@ -66,13 +66,20 @@ class NativeLibraryActivity : AppCompatActivity() {
     }
 
     private fun load() {
-        if (!StremioSession.isLoggedIn(this)) {
+        val local = !Profiles.isMain(this)
+        if (!local && !StremioSession.isLoggedIn(this)) {
             status.text = "Vincula tu cuenta en Cuenta para ver tu biblioteca."
             return
         }
         status.text = "Cargando biblioteca…"
         thread(name = "cineflow-library", isDaemon = true) {
-            val items = StremioSession.library(this).sortedByDescending { it.timeOffset }
+            val items = if (local) {
+                ProfileLibrary.list(this).map {
+                    StremioSession.LibraryItem(it.id, it.type, it.name, it.poster, null, 0, 0)
+                }
+            } else {
+                StremioSession.library(this).sortedByDescending { it.timeOffset }
+            }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 list.removeAllViews()

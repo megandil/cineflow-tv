@@ -210,13 +210,24 @@ class NativeDetailActivity : AppCompatActivity() {
         val library = pill("＋  MI BIBLIOTECA", false)
         libraryButton = library
         library.setOnClickListener {
-            if (!StremioSession.isLoggedIn(this)) {
+            val local = !Profiles.isMain(this)
+            if (!local && !StremioSession.isLoggedIn(this)) {
                 startActivity(Intent(this, NativeAccountActivity::class.java))
+                return@setOnClickListener
+            }
+            val target = !inLibrary
+            if (local) {
+                if (target) {
+                    ProfileLibrary.add(this, ProfileLibrary.Item(meta.id, meta.type, meta.name, meta.poster, meta.background, meta.releaseInfo))
+                } else {
+                    ProfileLibrary.remove(this, meta.id)
+                }
+                inLibrary = target
+                library.text = if (target) "✓  EN MI BIBLIOTECA" else "＋  MI BIBLIOTECA"
                 return@setOnClickListener
             }
             library.text = if (inLibrary) "QUITANDO…" else "GUARDANDO…"
             thread(name = "cineflow-library-toggle", isDaemon = true) {
-                val target = !inLibrary
                 val (ok, message) = if (target)
                     StremioSession.addToLibrary(this, StremioSession.MetaInput(meta.id, meta.type, meta.name, meta.poster, meta.background, meta.releaseInfo))
                 else StremioSession.removeFromLibrary(this, meta.id)
@@ -234,7 +245,7 @@ class NativeDetailActivity : AppCompatActivity() {
         }
         actions.addView(library, LinearLayout.LayoutParams(dp(190), dp(40)))
         thread(name = "cineflow-library-check", isDaemon = true) {
-            val has = StremioSession.isInLibrary(this, meta.id)
+            val has = if (Profiles.isMain(this)) StremioSession.isInLibrary(this, meta.id) else ProfileLibrary.contains(this, meta.id)
             runOnUiThread {
                 if (!isFinishing && !isDestroyed) {
                     inLibrary = has

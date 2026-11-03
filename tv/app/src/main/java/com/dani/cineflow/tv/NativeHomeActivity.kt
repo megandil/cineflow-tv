@@ -613,7 +613,7 @@ class NativeHomeActivity : AppCompatActivity() {
         private val autoResume: Boolean = false,
         private val upFocusId: Int = View.NO_ID,
     ) : RecyclerView.Adapter<CardAdapter.Holder>() {
-        inner class Holder(val card: LinearLayout, val frame: FrameLayout, val image: ImageView, val name: TextView, val sub: TextView) : RecyclerView.ViewHolder(card)
+        inner class Holder(val card: LinearLayout, val frame: FrameLayout, val image: ImageView, val name: TextView, val sub: TextView, val description: TextView) : RecyclerView.ViewHolder(card)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val card = LinearLayout(this@NativeHomeActivity).apply {
@@ -636,6 +636,17 @@ class NativeHomeActivity : AppCompatActivity() {
                 layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             }
             frame.addView(image)
+            val description = TextView(this@NativeHomeActivity).apply {
+                setTextColor(Color.rgb(242,235,221))
+                textSize = 7.8f
+                maxLines = 3
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(dp(8), dp(6), dp(8), dp(7))
+                setBackgroundColor(0xD907080B.toInt())
+                visibility = View.GONE
+                layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
+            }
+            frame.addView(description)
             val name = TextView(this@NativeHomeActivity).apply {
                 setTextColor(CREAM)
                 textSize = 11f
@@ -654,7 +665,7 @@ class NativeHomeActivity : AppCompatActivity() {
             card.addView(frame)
             card.addView(name)
             card.addView(sub)
-            return Holder(card, frame, image, name, sub)
+            return Holder(card, frame, image, name, sub, description)
         }
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
@@ -664,9 +675,14 @@ class NativeHomeActivity : AppCompatActivity() {
             holder.card.nextFocusLeftId = View.NO_ID
             holder.name.text = meta.name
             holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("   ")
+            holder.description.text = meta.description.orEmpty()
+            holder.description.visibility = View.GONE
             NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 3)
+            holder.card.background = rounded(Color.TRANSPARENT, 13, Color.TRANSPARENT, 0)
             holder.card.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                holder.frame.background = rounded(Color.TRANSPARENT, 13, if (has) CORAL else Color.TRANSPARENT, if (has) 2 else 0)
+                holder.card.background = rounded(if (has) Color.rgb(31,20,21) else Color.TRANSPARENT, 13,
+                    if (has) CORAL else Color.TRANSPARENT, if (has) 2 else 0)
+                holder.description.visibility = if (has && holder.description.text.isNotBlank()) View.VISIBLE else View.GONE
                 holder.name.setTextColor(if (has) Color.WHITE else CREAM)
                 v.animate().scaleX(if (has) 1.04f else 1f).scaleY(if (has) 1.04f else 1f).setDuration(120).start()
                 if (has) v.bringToFront()
