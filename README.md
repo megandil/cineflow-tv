@@ -158,3 +158,11 @@ CineFlow es un cliente independiente y no está afiliado a Stremio, TMDB ni a lo
 ## Licencia
 
 GNU General Public License v3.0. Consulta [LICENSE](LICENSE).
+
+
+## Motor AceStream integrado
+
+CineFlow incluye el motor open source **Outpace AceStream** para reproducir canales
+`acestream://` sin instalar la aplicación cerrada de AceStream. Consulta
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para la atribución y la licencia
+AGPL-3.0.

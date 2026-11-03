@@ -6,7 +6,7 @@ plugins {
 }
 
 // CineFlow version. Bump this when publishing a GitHub release.
-val cineflowVersion = "2.24.36"
+val cineflowVersion = "2.24.37"
 val versionParts = cineflowVersion.split(".").map { it.toInt() }
 
 // Release signing: tv/keystore.properties (not in git) or the CINEFLOW_KEYSTORE* environment variables in CI
@@ -66,7 +66,10 @@ android {
 
     // The torrent engine's native code compressed in the APK: a smaller download for updates
     packaging {
-        jniLibs { useLegacyPackaging = true }
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/liboutpace.so"
+        }
     }
 
 }

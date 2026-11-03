@@ -81,6 +81,7 @@ class ChannelsActivity : AppCompatActivity() {
         }
         supportActionBar?.hide()
         setContentView(buildUi())
+        OutpaceEngine.ensureStartedAsync(this) { }
         loadChannels()
     }
 

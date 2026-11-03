@@ -227,7 +227,7 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         // The AceStream engine on the TV starts buffering peers before it answers with the stream.
-        val aceStream = url.startsWith("acestream://") || url.contains(":6878/ace/")
+        val aceStream = url.startsWith("acestream://") || url.contains("/ace/getstream")
         // Addons can ask for headers on their links (Stremio's proxyHeaders)
         val headers = mutableMapOf<String, String>()
         stream.optJSONObject("headers")?.let { h -> h.keys().forEach { k -> headers[k] = h.optString(k) } }

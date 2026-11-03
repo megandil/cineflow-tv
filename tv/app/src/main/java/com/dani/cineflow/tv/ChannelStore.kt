@@ -4,9 +4,12 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.concurrent.thread
 
 /**
  * The last channels opened from CineFlow Canales. Stored natively (the WebView and the native
@@ -79,7 +82,7 @@ object ChannelStore {
         if (changed) prefs.edit().putString(KEY, items.toString()).apply()
     }
 
-    /** Opens an AceStream content id in AceStream, or a plain HTTP channel in the native player. */
+    /** Opens an AceStream content id with the bundled Outpace engine, or a plain HTTP channel. */
     fun play(context: Context, json: String) {
         val data = try { JSONObject(json) } catch (_: Exception) { return }
         val url = data.optString("url")
@@ -87,10 +90,30 @@ object ChannelStore {
         if (url.isBlank()) return
         val id = aceId(url)
         if (id != null) {
-            try {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("acestream://$id")))
-            } catch (_: ActivityNotFoundException) {
-                Toast.makeText(context, "AceStream no está instalado", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Arrancando motor AceStream…", Toast.LENGTH_SHORT).show()
+            thread(name = "cineflow-channel-engine", isDaemon = true) {
+                val ok = OutpaceEngine.ensureStarted(context.applicationContext)
+                Handler(Looper.getMainLooper()).post {
+                    if (ok) {
+                        val stream = JSONObject()
+                            .put("url", "http://127.0.0.1:${OutpaceEngine.PORT}/ace/getstream?id=$id")
+                            .put("title", name)
+                            .put("subtitle", "CineFlow · Canales")
+                            .put("clock", false)
+                        context.startActivity(
+                            Intent(context, PlayerActivity::class.java)
+                                .putExtra(PlayerActivity.EXTRA_STREAM, stream.toString())
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    } else {
+                        // Last resort: the old AceStream app, if it is installed.
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("acestream://$id")))
+                        } catch (_: ActivityNotFoundException) {
+                            Toast.makeText(context, "No se pudo iniciar el motor AceStream", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             }
             return
         }
@@ -102,6 +125,7 @@ object ChannelStore {
         context.startActivity(
             Intent(context, PlayerActivity::class.java)
                 .putExtra(PlayerActivity.EXTRA_STREAM, stream.toString())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }
 
