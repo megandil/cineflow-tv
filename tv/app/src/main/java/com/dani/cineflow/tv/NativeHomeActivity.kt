@@ -60,7 +60,6 @@ class NativeHomeActivity : AppCompatActivity() {
     private var libraryCache: List<StremioSession.LibraryItem> = emptyList()
     private var firstRow: RecyclerView? = null
     private var firstCardLeftPending = false
-    private var firstCardLeftAt = 0L
     private var renderedProfile: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -112,7 +111,6 @@ class NativeHomeActivity : AppCompatActivity() {
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode != android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
             firstCardLeftPending = false
-            firstCardLeftAt = 0L
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
             val focused = currentFocus
@@ -465,17 +463,14 @@ class NativeHomeActivity : AppCompatActivity() {
                 val position = parent.getChildAdapterPosition(card)
                 if (position <= 0) {
                     parent.scrollToPosition(0)
-                    val now = android.os.SystemClock.uptimeMillis()
-                    // A quick double-tap must not fly into the rail. The menu only opens on a
-                    // deliberate later press (or while the key is held and repeating).
-                    if (firstCardLeftPending && (held || now - firstCardLeftAt >= 1000L)) {
+                    // Taps NEVER open the rail: that made a quick double tap feel broken.
+                    // Keep Left in the row; only a held/repeating Left opens the side menu.
+                    if (held && firstCardLeftPending) {
                         firstCardLeftPending = false
-                        firstCardLeftAt = 0L
                         railRows.firstOrNull()?.requestFocus()
                             ?: rail?.getChildAt(0)?.requestFocus()
                     } else {
                         firstCardLeftPending = true
-                        firstCardLeftAt = now
                         card.requestFocus()
                     }
                     return true
@@ -491,7 +486,6 @@ class NativeHomeActivity : AppCompatActivity() {
                 }
                 // When this Left lands on the first card, arm the next Left for the menu.
                 firstCardLeftPending = position == 1
-                firstCardLeftAt = if (position == 1) android.os.SystemClock.uptimeMillis() else 0L
                 return true
             }
             card = parent
