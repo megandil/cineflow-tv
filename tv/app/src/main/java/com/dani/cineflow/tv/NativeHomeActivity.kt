@@ -12,7 +12,8 @@ import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.widget.FrameLayout
-import android.app.AlertDialog
+import android.app.Dialog
+import android.graphics.drawable.ColorDrawable
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
@@ -40,6 +41,7 @@ class NativeHomeActivity : AppCompatActivity() {
 
     private lateinit var rail: LinearLayout
     private lateinit var heroPlay: TextView
+    private lateinit var heroMore: TextView
     private lateinit var heroImage: ImageView
     private lateinit var heroTitle: TextView
     private lateinit var heroMeta: TextView
@@ -111,8 +113,12 @@ class NativeHomeActivity : AppCompatActivity() {
             firstCardLeftPending = false
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
-            if (moveLeftInsideRow(currentFocus)) return true
             val focused = currentFocus
+            if (focused === heroMore) {
+                heroPlay.requestFocus()
+                return true
+            }
+            if (moveLeftInsideRow(currentFocus)) return true
             if (focused != null && focused !== heroPlay) {
                 val location = IntArray(2)
                 focused.getLocationOnScreen(location)
@@ -351,7 +357,17 @@ class NativeHomeActivity : AppCompatActivity() {
             false
         }
         val more = pill("MÁS INFORMACIÓN", false)
+        heroMore = more
+        more.id = View.generateViewId()
         more.setOnClickListener { openDetail(currentHero) }
+        heroPlay.nextFocusRightId = more.id
+        more.nextFocusLeftId = heroPlay.id
+        more.setOnKeyListener { _, keyCode, event ->
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+                heroPlay.requestFocus()
+                true
+            } else false
+        }
         actions.addView(heroPlay, LinearLayout.LayoutParams(dp(170), dp(38)).apply { rightMargin = dp(8) })
         actions.addView(more, LinearLayout.LayoutParams(dp(160), dp(38)))
         heroText.addView(actions)
@@ -477,20 +493,123 @@ class NativeHomeActivity : AppCompatActivity() {
         return false
     }
 
-    private fun askRemoveFromContinue(meta: Meta) {
-        AlertDialog.Builder(this)
-            .setTitle("Continuar viendo")
-            .setMessage("¿Quitar «${meta.name}» de Continuar viendo?")
-            .setNegativeButton("CANCELAR", null)
-            .setPositiveButton("QUITAR") { _, _ ->
-                NativeProgressStore.remove(this, meta.id)
-                Toast.makeText(this, "Quitado de Continuar viendo", Toast.LENGTH_SHORT).show()
-                thread(name = "cineflow-clear-progress", isDaemon = true) {
-                    StremioSession.clearContinueProgress(this, meta.id)
-                    runOnUiThread { loadCatalogs() }
+    /** Long OK on a remote needs its own timer; View's long-click is unreliable for D-pad. */
+    private fun installLongPress(view: View, action: () -> Unit) {
+        var fired = false
+        val runnable = Runnable {
+            fired = true
+            action()
+        }
+        view.setOnKeyListener { v, keyCode, event ->
+            if (keyCode != android.view.KeyEvent.KEYCODE_DPAD_CENTER && keyCode != android.view.KeyEvent.KEYCODE_ENTER) {
+                false
+            } else {
+                when (event.action) {
+                    android.view.KeyEvent.ACTION_DOWN -> {
+                        if (event.isLongPress && !fired) {
+                            v.removeCallbacks(runnable)
+                            runnable.run()
+                            true
+                        } else {
+                            if (event.repeatCount == 0) {
+                                fired = false
+                                v.removeCallbacks(runnable)
+                                v.postDelayed(runnable, 650L)
+                            }
+                            false
+                        }
+                    }
+                    android.view.KeyEvent.ACTION_UP -> {
+                        v.removeCallbacks(runnable)
+                        if (fired) {
+                            fired = false
+                            true
+                        } else false
+                    }
+                    else -> false
                 }
             }
-            .show()
+        }
+        view.setOnLongClickListener { action(); true }
+    }
+
+    private fun askRemoveFromContinue(meta: Meta) {
+        val dialog = Dialog(this)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(26), dp(20), dp(26), dp(16))
+            background = rounded(Color.rgb(17,19,25), 18, Color.rgb(64,68,79), 1)
+            clipChildren = false
+            clipToPadding = false
+        }
+        panel.addView(TextView(this).apply {
+            text = "CONTINUAR VIENDO"
+            setTextColor(CORAL)
+            textSize = 8f
+            letterSpacing = .18f
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        panel.addView(TextView(this).apply {
+            text = meta.name
+            setTextColor(CREAM)
+            textSize = 19f
+            typeface = Typeface.create("serif", Typeface.BOLD)
+            setPadding(0, dp(4), 0, dp(14))
+        })
+        fun option(icon: String, title: String, subtitle: String, action: () -> Unit): TextView {
+            val row = TextView(this).apply {
+                text = "$icon   $title\n      $subtitle"
+                setTextColor(CREAM)
+                textSize = 12f
+                setLineSpacing(dp(2).toFloat(), 1f)
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                isFocusable = true
+                isFocusableInTouchMode = true
+                isClickable = true
+                background = rounded(Color.rgb(23,25,32), 11, Color.rgb(53,57,68), 1)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) }
+                setOnClickListener { dialog.dismiss(); action() }
+                onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                    v.background = rounded(if (has) Color.rgb(42,46,55) else Color.rgb(23,25,32), 11,
+                        if (has) CORAL else Color.rgb(53,57,68), if (has) 2 else 1)
+                }
+            }
+            panel.addView(row)
+            return row
+        }
+        val remove = option("✕", "Quitar de Continuar viendo", "Se borrará el progreso de este perfil") {
+            NativeProgressStore.remove(this, meta.id)
+            Toast.makeText(this, "Quitado de Continuar viendo", Toast.LENGTH_SHORT).show()
+            thread(name = "cineflow-clear-progress", isDaemon = true) {
+                StremioSession.clearContinueProgress(this, meta.id)
+                runOnUiThread { loadCatalogs() }
+            }
+        }
+        val cancel = TextView(this).apply {
+            text = "CANCELAR"
+            setTextColor(Color.rgb(160,164,174))
+            textSize = 10f
+            letterSpacing = .08f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(8))
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isClickable = true
+            setOnClickListener { dialog.dismiss() }
+            onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                (v as TextView).setTextColor(if (has) CORAL else Color.rgb(160,164,174))
+            }
+        }
+        panel.addView(cancel)
+        dialog.setContentView(panel)
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setDimAmount(.72f)
+            setLayout(dp(600), WindowManager.LayoutParams.WRAP_CONTENT)
+        }
+        dialog.setOnShowListener { remove.requestFocus() }
+        dialog.show()
     }
 
     private fun section(number: String, title: String, list: List<Meta>, type: String, autoResume: Boolean = false): View {
@@ -722,6 +841,12 @@ class NativeHomeActivity : AppCompatActivity() {
             }
             holder.card.setOnClickListener {
                 if (autoResume) playContinue(meta) else openDetail(meta, fallbackType)
+            }
+            if (autoResume) {
+                installLongPress(holder.card) { askRemoveFromContinue(meta) }
+            } else {
+                holder.card.setOnLongClickListener(null)
+                holder.card.setOnKeyListener(null)
             }
         }
 
