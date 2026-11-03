@@ -326,7 +326,12 @@ class NativeHomeActivity : AppCompatActivity() {
             setPadding(0, dp(7), 0, dp(11))
         }
         heroText.addView(heroDescription)
-        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(6), 0, dp(6), 0)
+            clipChildren = false
+            clipToPadding = false
+        }
         heroPlay = pill("▶   VER AHORA", true)
         heroPlay.id = View.generateViewId()
         heroPlay.setOnClickListener { openDetail(currentHero) }

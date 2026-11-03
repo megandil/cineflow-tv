@@ -1,8 +1,9 @@
 package com.dani.cineflow.tv
 
-import android.app.AlertDialog
+import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -91,6 +92,17 @@ class NativeDetailActivity : AppCompatActivity() {
 
     private fun buildUi(type: String, id: String): View {
         root = FrameLayout(this).apply { setBackgroundColor(INK) }
+        // One full-screen backdrop: the hero image never ends halfway down the page.
+        backdrop = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+        }
+        root.addView(backdrop)
+        root.addView(View(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(0x6607080B, 0xB307080B.toInt(), 0xF207080B.toInt(), 0xFF07080B.toInt()))
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+        })
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -106,15 +118,6 @@ class NativeDetailActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(350))
             clipChildren = false
         }
-        backdrop = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
-        }
-        hero.addView(backdrop)
-        hero.addView(View(this).apply {
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0x33000000, 0xAA07080B.toInt(), 0xFF07080B.toInt()))
-            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
-        })
         hero.addView(TextView(this).apply {
             text = "‹  CINEFLOW"
             setTextColor(CREAM)
@@ -481,21 +484,82 @@ class NativeDetailActivity : AppCompatActivity() {
     }
 
     private fun showEpisodeOptions(meta: Meta, video: Video) {
-        val options = arrayOf("Reproducir desde el inicio", "Marcar como visto")
-        AlertDialog.Builder(this)
-            .setTitle("T${video.season} E${video.episode} · ${video.title ?: video.name ?: "Episodio"}")
-            .setItems(options) { _, which ->
-                if (which == 0) {
-                    resumeMs = 0L
-                    selectedVideo = video
-                    loadStreams(video.id, autoplay = true)
-                } else {
-                    NativeProgressStore.markWatched(this, video.id)
-                    NativeProgressStore.remove(this, meta.id)
-                    Toast.makeText(this, "Episodio marcado como visto", Toast.LENGTH_SHORT).show()
+        val dialog = Dialog(this)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(20), dp(24), dp(16))
+            background = rounded(Color.rgb(17,19,25), 18, Color.rgb(64,68,79), 1)
+        }
+        panel.addView(TextView(this).apply {
+            text = "EPISODIO"
+            setTextColor(CORAL)
+            textSize = 8f
+            letterSpacing = .18f
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        panel.addView(TextView(this).apply {
+            text = "T${video.season} E${video.episode} · ${video.title ?: video.name ?: "Episodio ${video.episode}"}"
+            setTextColor(CREAM)
+            textSize = 19f
+            typeface = Typeface.create("serif", Typeface.BOLD)
+            setPadding(0, dp(4), 0, dp(14))
+        })
+        fun option(icon: String, title: String, subtitle: String, action: () -> Unit): TextView {
+            val row = TextView(this).apply {
+                text = "$icon   $title\n      $subtitle"
+                setTextColor(CREAM)
+                textSize = 12f
+                setLineSpacing(dp(2).toFloat(), 1f)
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                isFocusable = true
+                isFocusableInTouchMode = true
+                isClickable = true
+                background = rounded(Color.rgb(23,25,32), 11, Color.rgb(53,57,68), 1)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) }
+                setOnClickListener { dialog.dismiss(); action() }
+                onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                    v.background = rounded(if (has) Color.rgb(42,46,55) else Color.rgb(23,25,32), 11, if (has) CORAL else Color.rgb(53,57,68), if (has) 2 else 1)
+                    v.animate().scaleX(if (has) 1.02f else 1f).scaleY(if (has) 1.02f else 1f).setDuration(100).start()
                 }
             }
-            .show()
+            panel.addView(row)
+            return row
+        }
+        val restart = option("▶", "Reproducir desde el inicio", "Ignora el progreso guardado") {
+            resumeMs = 0L
+            selectedVideo = video
+            loadStreams(video.id, autoplay = true)
+        }
+        option("✓", "Marcar como visto", "Quita el episodio de Continuar viendo") {
+            NativeProgressStore.markWatched(this, video.id)
+            NativeProgressStore.remove(this, meta.id)
+            Toast.makeText(this, "Episodio marcado como visto", Toast.LENGTH_SHORT).show()
+        }
+        val cancel = TextView(this).apply {
+            text = "CANCELAR"
+            setTextColor(Color.rgb(160,164,174))
+            textSize = 10f
+            letterSpacing = .08f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(8))
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isClickable = true
+            setOnClickListener { dialog.dismiss() }
+            onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                (v as TextView).setTextColor(if (has) CORAL else Color.rgb(160,164,174))
+            }
+        }
+        panel.addView(cancel)
+        dialog.setContentView(panel)
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setDimAmount(.72f)
+            setLayout(dp(560), WindowManager.LayoutParams.WRAP_CONTENT)
+        }
+        dialog.setOnShowListener { restart.requestFocus() }
+        dialog.show()
     }
 
     private fun playFromStart() {
