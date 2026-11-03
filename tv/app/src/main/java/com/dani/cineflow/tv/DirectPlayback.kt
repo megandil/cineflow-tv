@@ -26,6 +26,7 @@ object DirectPlayback {
         target: Target,
         onStatus: (String) -> Unit = {},
         onError: (String) -> Unit,
+        onStarted: () -> Unit = {},
     ) {
         thread(name = "cineflow-direct-play", isDaemon = true) {
             val videoId = target.videoId ?: target.id
@@ -37,6 +38,7 @@ object DirectPlayback {
                 activity.runOnUiThread { onStatus("Probando Torrentio…") }
                 streams = torrentio(target.type, videoId)
             }
+            streams = PlaybackQuality.apply(activity, streams)
             val stream = streams.firstOrNull()
             if (stream == null) {
                 activity.runOnUiThread { onError("No hay proveedores de AllDebrid disponibles.") }
@@ -78,6 +80,7 @@ object DirectPlayback {
             activity.runOnUiThread {
                 if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
                 activity.startActivity(Intent(activity, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_STREAM, json.toString()))
+                onStarted()
             }
         }
     }

@@ -475,7 +475,7 @@ class NativeDetailActivity : AppCompatActivity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 streamsLoading = false
-                streams = list
+                streams = capStreams(list)
                 if (list.isEmpty()) {
                     autoCover?.let { (it.parent as? ViewGroup)?.removeView(it) }
                     autoCover = null
@@ -486,6 +486,23 @@ class NativeDetailActivity : AppCompatActivity() {
                 if (openPicker) showStreamPicker() else if (autoplay) play(list.first())
             }
         }
+    }
+
+    private fun capStreams(list: List<Stream>): List<Stream> {
+        if (list.isEmpty()) return list
+        val max = PlaybackQuality.effectiveMax(this)
+        fun quality(s: Stream): Int {
+            val text = (s.name + " " + (s.title ?: "")).lowercase()
+            return when {
+                text.contains("2160") || text.contains("4k") -> 2160
+                text.contains("1080") -> 1080
+                text.contains("720") -> 720
+                text.contains("480") -> 480
+                else -> 0
+            }
+        }
+        val within = list.filter { val q = quality(it); q == 0 || q <= max }
+        return (within.ifEmpty { list }).sortedByDescending { quality(it) }
     }
 
     private fun play(stream: Stream) {
@@ -506,6 +523,9 @@ class NativeDetailActivity : AppCompatActivity() {
         } else {
             url = direct!!; torrent = false
         }
+        val ordered = m.videos.orEmpty().sortedWith(compareBy({ it.season ?: 0 }, { it.episode ?: 0 }))
+        val currentIndex = ordered.indexOfFirst { it.id == (video?.id ?: m.id) }
+        val next = if (currentIndex >= 0 && currentIndex + 1 < ordered.size) ordered[currentIndex + 1] else null
         val json = JSONObject()
             .put("url", url)
             .put("torrent", torrent)
@@ -523,6 +543,10 @@ class NativeDetailActivity : AppCompatActivity() {
             .put("season", video?.season ?: 0)
             .put("episode", video?.episode ?: 0)
             .put("episodeTitle", video?.title ?: video?.name ?: "")
+            .put("nextVideoId", next?.id.orEmpty())
+            .put("nextSeason", next?.season ?: 0)
+            .put("nextEpisode", next?.episode ?: 0)
+            .put("nextTitle", next?.title ?: next?.name ?: "")
         autoCover?.let { (it.parent as? ViewGroup)?.removeView(it) }
         autoCover = null
         startActivity(Intent(this, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_STREAM, json.toString()))

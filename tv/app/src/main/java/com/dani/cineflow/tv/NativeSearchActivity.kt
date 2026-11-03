@@ -67,7 +67,17 @@ class NativeSearchActivity : AppCompatActivity() {
                 }
             }
         })
-        setupExplore()
+        val catalogUrl = intent.getStringExtra(EXTRA_CATALOG_URL)
+        if (catalogUrl.isNullOrBlank()) {
+            setupExplore()
+        } else {
+            categoryRow.visibility = View.GONE
+            loadCatalog(
+                catalogUrl,
+                intent.getStringExtra(EXTRA_CATALOG_TITLE).orEmpty().ifBlank { "Catálogo" },
+                intent.getStringExtra(EXTRA_CATALOG_TYPE).orEmpty().ifBlank { "movie" },
+            )
+        }
     }
 
     private fun buildUi(): View {

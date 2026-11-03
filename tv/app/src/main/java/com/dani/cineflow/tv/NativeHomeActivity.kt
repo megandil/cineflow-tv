@@ -416,6 +416,7 @@ class NativeHomeActivity : AppCompatActivity() {
             if (row.items.isNotEmpty()) rows.addView(section("", row.title.uppercase(Locale.ROOT), row.items, row.type))
         }
         rows.addView(buildLive())
+        rows.addView(buildDiscovery())
         rows.addView(TextView(this).apply {
             text = "CINEFLOW · UNA EXPERIENCIA PROPIA"
             setTextColor(Color.rgb(92,96,106))
@@ -569,6 +570,27 @@ class NativeHomeActivity : AppCompatActivity() {
         val cards = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         cards.addView(liveCard("CANALES", "759 señales · AceStream", CORAL) { startActivity(Intent(this, ChannelsActivity::class.java)) }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { rightMargin = dp(10) })
         cards.addView(liveCard("GUÍA", "EPG · ahora y después", MINT) { startActivity(Intent(this, GuideActivity::class.java)) }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { leftMargin = dp(10) })
+        box.addView(cards)
+        return box
+    }
+
+    private fun buildDiscovery(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(15), 0, dp(8)) }
+        head.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_cf_compass)
+            setColorFilter(CORAL)
+            layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { rightMargin = dp(10) }
+        })
+        head.addView(TextView(this).apply { text = "DESCUBRIR"; setTextColor(CREAM); textSize = 11f; letterSpacing = .12f; typeface = Typeface.DEFAULT_BOLD })
+        box.addView(head)
+        val cards = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        cards.addView(liveCard("COLECCIONES", "Acción · Comedia · Drama · Terror", CORAL) {
+            startActivity(Intent(this, NativeCollectionsActivity::class.java))
+        }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { rightMargin = dp(10) })
+        cards.addView(liveCard("CALENDARIO", "Próximos episodios de tus series", MINT) {
+            startActivity(Intent(this, NativeCalendarActivity::class.java))
+        }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { leftMargin = dp(10) })
         box.addView(cards)
         return box
     }
@@ -751,12 +773,12 @@ class NativeHomeActivity : AppCompatActivity() {
         homeRoot.addView(overlay)
         DirectPlayback.play(this, target, onStatus = { status ->
             runOnUiThread { loadingStatus?.text = status }
-        }) { error ->
+        }, onError = { error ->
             loadingOverlay?.let { if (it.parent != null) homeRoot.removeView(it) }
             loadingOverlay = null
             loadingStatus = null
             android.widget.Toast.makeText(this, error, android.widget.Toast.LENGTH_LONG).show()
-        }
+        })
     }
 
     override fun onPause() {

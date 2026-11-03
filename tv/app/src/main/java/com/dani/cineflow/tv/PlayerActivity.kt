@@ -77,6 +77,13 @@ class PlayerActivity : AppCompatActivity() {
     private var openDetailOnBack = false
     private var nativeMetaId: String? = null
     private var nativeMetaType: String? = null
+    private var nextVideoId: String? = null
+    private var nextSeason = 0
+    private var nextEpisode = 0
+    private var nextTitle: String? = null
+    private var metaName: String? = null
+    private var metaPoster: String? = null
+    private var nextPending = false
     // A torrent played on the TV itself: how it's going, while the picture waits for it
     private var torrent = false
     private val torrentStatus = object : Runnable {
@@ -133,6 +140,12 @@ class PlayerActivity : AppCompatActivity() {
         openDetailOnBack = stream.optBoolean("openDetailOnBack", false)
         nativeMetaId = stream.optString("metaId").takeIf { it.isNotBlank() }
         nativeMetaType = stream.optString("metaType", "movie")
+        nextVideoId = stream.optString("nextVideoId").takeIf { it.isNotBlank() }
+        nextSeason = stream.optInt("nextSeason", 0)
+        nextEpisode = stream.optInt("nextEpisode", 0)
+        nextTitle = stream.optString("nextTitle").takeIf { it.isNotBlank() }
+        metaName = stream.optString("name").takeIf { it.isNotBlank() }
+        metaPoster = stream.optString("poster").takeIf { it.isNotBlank() }
         segments = stream.optJSONArray("skips")?.let { list ->
             (0 until list.length()).mapNotNull { i ->
                 val o = list.optJSONObject(i) ?: return@mapNotNull null
@@ -231,7 +244,30 @@ class PlayerActivity : AppCompatActivity() {
         exo.setMediaItem(item, stream.optLong("startMs", 0L).coerceAtLeast(0L))
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_ENDED) finishWith(ended = true)
+                if (state != Player.STATE_ENDED) return
+                val nextId = nextVideoId
+                val upNext = NativeSettings.value(this@PlayerActivity, "upNext", "10")
+                if (!nextId.isNullOrBlank() && upNext != "0" && nativeMetaId != null) {
+                    nextPending = true
+                    DirectPlayback.play(
+                        this@PlayerActivity,
+                        DirectPlayback.Target(
+                            id = nativeMetaId!!,
+                            type = nativeMetaType ?: "series",
+                            name = metaName ?: "",
+                            poster = metaPoster,
+                            videoId = nextId,
+                            startMs = 0L,
+                            season = nextSeason,
+                            episode = nextEpisode,
+                            episodeTitle = nextTitle,
+                        ),
+                        onError = { finishWith(ended = true) },
+                        onStarted = { finishWith(ended = true) },
+                    )
+                } else {
+                    finishWith(ended = true)
+                }
             }
 
             // A subtitle switched on mid-line only shows from its next line: a seek to where we are
@@ -365,7 +401,7 @@ class PlayerActivity : AppCompatActivity() {
         PlaybackBus.closed(position, duration, ended, error)
         if (torrent) TorrentEngine.close()
         // Opened directly from Continue Watching: Back must land on the title's ficha, not Home.
-        if (openDetailOnBack && nativeMetaId != null && !isFinishing) {
+        if (openDetailOnBack && !nextPending && nativeMetaId != null && !isFinishing) {
             startActivity(Intent(this, NativeDetailActivity::class.java)
                 .putExtra(NativeDetailActivity.EXTRA_ID, nativeMetaId)
                 .putExtra(NativeDetailActivity.EXTRA_TYPE, nativeMetaType ?: "movie"))
