@@ -57,6 +57,7 @@ class NativeHomeActivity : AppCompatActivity() {
     private var extraCatalogsCache: List<ExtraRow> = emptyList()
     private var libraryCache: List<StremioSession.LibraryItem> = emptyList()
     private var firstRow: RecyclerView? = null
+    private var firstCardLeftPending = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,10 +93,11 @@ class NativeHomeActivity : AppCompatActivity() {
             loadingStatus = null
             return true
         }
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode != android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+            firstCardLeftPending = false
+        }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
             if (moveLeftInsideRow(currentFocus)) return true
-            // Absolute fallback: while the focus is in the content area, Left must not hand
-            // focus to the side rail. The rail remains reachable with Left from the hero button.
             val focused = currentFocus
             if (focused != null && focused !== heroPlay) {
                 val location = IntArray(2)
@@ -115,6 +117,10 @@ class NativeHomeActivity : AppCompatActivity() {
                 }
                 view = view.parent as? View
             }
+            // The 3-bar button is also the explicit way into the side menu, so Left can stay
+            // inside the rows without ever trapping the user away from Inicio/Explorar/Addons.
+            railRows.firstOrNull()?.requestFocus() ?: rail?.getChildAt(0)?.requestFocus()
+            return true
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
             val focus = currentFocus
@@ -424,6 +430,7 @@ class NativeHomeActivity : AppCompatActivity() {
                     card.requestFocus()
                     return true
                 }
+                firstCardLeftPending = false
                 val previous = parent.findViewHolderForAdapterPosition(position - 1)?.itemView
                 if (previous != null) {
                     previous.requestFocus()
@@ -506,7 +513,6 @@ class NativeHomeActivity : AppCompatActivity() {
         box.addView(head)
         val rv = RecyclerView(this).apply {
             id = View.generateViewId()
-            nextFocusLeftId = id
             layoutManager = LinearLayoutManager(this@NativeHomeActivity, LinearLayoutManager.HORIZONTAL, false)
             adapter = CardAdapter(list, type, autoResume, verTodoId)
             if (firstRow == null) firstRow = this
@@ -631,7 +637,7 @@ class NativeHomeActivity : AppCompatActivity() {
             val meta = items[position]
             holder.card.tag = if (autoResume) meta else null
             // The first card keeps Left inside its row instead of jumping to the side rail.
-            holder.card.nextFocusLeftId = if (position == 0) holder.card.id else View.NO_ID
+            holder.card.nextFocusLeftId = View.NO_ID
             holder.card.setOnKeyListener { v, keyCode, event ->
                 if (event.action == android.view.KeyEvent.ACTION_DOWN &&
                     keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT
