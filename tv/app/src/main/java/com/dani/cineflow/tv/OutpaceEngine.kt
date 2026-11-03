@@ -59,7 +59,9 @@ object OutpaceEngine {
                 pb.redirectOutput(ProcessBuilder.Redirect.appendTo(log))
                 pb.environment().apply {
                     put("OUTPACE_BIND", "$HOST:$PORT")
-                    put("OUTPACE_PEER_LISTEN", "0.0.0.0:8621")
+                    // Do not collide with an installed AceStream engine.
+                    put("OUTPACE_PEER_LISTEN", "0.0.0.0:8721")
+                    put("OUTPACE_RTMP_BIND", "127.0.0.1:1936")
                     put("OUTPACE_DATA_DIR", data.absolutePath)
                     put("OUTPACE_CACHE_DIR", cache.absolutePath)
                     put("OUTPACE_ACE_COMPAT", "1")
