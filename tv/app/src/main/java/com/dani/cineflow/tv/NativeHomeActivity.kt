@@ -92,6 +92,17 @@ class NativeHomeActivity : AppCompatActivity() {
             loadingStatus = null
             return true
         }
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+            if (moveLeftInsideRow(currentFocus)) return true
+            // Absolute fallback: while the focus is in the content area, Left must not hand
+            // focus to the side rail. The rail remains reachable with Left from the hero button.
+            val focused = currentFocus
+            if (focused != null && focused !== heroPlay) {
+                val location = IntArray(2)
+                focused.getLocationOnScreen(location)
+                if (location[0] >= dp(194)) return true
+            }
+        }
         if (event.action == android.view.KeyEvent.ACTION_DOWN &&
             (event.keyCode == android.view.KeyEvent.KEYCODE_MENU || event.keyCode == android.view.KeyEvent.KEYCODE_SETTINGS)
         ) {
@@ -396,6 +407,39 @@ class NativeHomeActivity : AppCompatActivity() {
         for (row in railRows) row.setNextFocusRightId(heroPlay.id)
     }
 
+    /**
+     * Horizontal cards are handled manually: when the previous card is off-screen the platform
+     * FocusFinder otherwise picks the side rail (Inicio/Explorar/...) on the left. Keep Left
+     * inside the row, scrolling to the previous card or staying on the first one.
+     */
+    private fun moveLeftInsideRow(start: View?): Boolean {
+        var view = start ?: return false
+        var card: View = view
+        while (card.parent is View) {
+            val parent = card.parent as View
+            if (parent is RecyclerView) {
+                val position = parent.getChildAdapterPosition(card)
+                if (position <= 0) {
+                    parent.scrollToPosition(0)
+                    card.requestFocus()
+                    return true
+                }
+                val previous = parent.findViewHolderForAdapterPosition(position - 1)?.itemView
+                if (previous != null) {
+                    previous.requestFocus()
+                } else {
+                    parent.scrollToPosition(position - 1)
+                    parent.post {
+                        parent.findViewHolderForAdapterPosition(position - 1)?.itemView?.requestFocus()
+                    }
+                }
+                return true
+            }
+            card = parent
+        }
+        return false
+    }
+
     private fun askRemoveFromContinue(meta: Meta) {
         AlertDialog.Builder(this)
             .setTitle("Continuar viendo")
@@ -461,6 +505,8 @@ class NativeHomeActivity : AppCompatActivity() {
         })
         box.addView(head)
         val rv = RecyclerView(this).apply {
+            id = View.generateViewId()
+            nextFocusLeftId = id
             layoutManager = LinearLayoutManager(this@NativeHomeActivity, LinearLayoutManager.HORIZONTAL, false)
             adapter = CardAdapter(list, type, autoResume, verTodoId)
             if (firstRow == null) firstRow = this
@@ -542,6 +588,7 @@ class NativeHomeActivity : AppCompatActivity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val card = LinearLayout(this@NativeHomeActivity).apply {
                 orientation = LinearLayout.VERTICAL
+                id = View.generateViewId()
                 setNextFocusUpId(upFocusId)
                 isFocusable = true
                 isFocusableInTouchMode = true
@@ -583,6 +630,15 @@ class NativeHomeActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val meta = items[position]
             holder.card.tag = if (autoResume) meta else null
+            // The first card keeps Left inside its row instead of jumping to the side rail.
+            holder.card.nextFocusLeftId = if (position == 0) holder.card.id else View.NO_ID
+            holder.card.setOnKeyListener { v, keyCode, event ->
+                if (event.action == android.view.KeyEvent.ACTION_DOWN &&
+                    keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT
+                ) {
+                    moveLeftInsideRow(v)
+                } else false
+            }
             holder.name.text = meta.name
             holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("   ")
             NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 3)
