@@ -76,6 +76,7 @@ class PlayerActivity : AppCompatActivity() {
     private val autoSkipped = mutableSetOf<SkipSegment>()
     private var showing: SkipSegment? = null
     private lateinit var skipButton: TextView
+    private var progressBar: View? = null
     private var streamJson: String? = null
     private var openDetailOnBack = false
     private var nativeMetaId: String? = null
@@ -147,19 +148,36 @@ class PlayerActivity : AppCompatActivity() {
             if (event.action == KeyEvent.ACTION_DOWN &&
                 (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT)) {
                 playerView.showController()
-                playerView.requestFocus()
+                progressBar?.requestFocus() ?: playerView.requestFocus()
                 true
             } else false
         }
+        progressBar = playerView.findViewById(androidx.media3.ui.R.id.exo_progress)
+        progressBar?.let { bar ->
+            bar.isFocusable = true
+            bar.isFocusableInTouchMode = true
+            bar.setOnKeyListener { _, keyCode, event ->
+                if (event.action == KeyEvent.ACTION_DOWN &&
+                    (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+                    seek(if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1)
+                    true
+                } else false
+            }
+        }
         playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
-            if (visibility == View.VISIBLE && skipButton.visibility == View.VISIBLE) {
-                skipButton.isFocusable = true
-                skipButton.isFocusableInTouchMode = true
-                skipButton.requestFocus()
-            } else if (visibility != View.VISIBLE) {
+            if (visibility == View.VISIBLE) {
+                if (skipButton.visibility == View.VISIBLE) {
+                    skipButton.isFocusable = true
+                    skipButton.isFocusableInTouchMode = true
+                    skipButton.nextFocusDownId = progressBar?.id ?: playerView.id
+                    progressBar?.nextFocusUpId = skipButton.id
+                }
+                // Start on the timeline: from there Up reaches Skip and Down the subtitles.
+                progressBar?.requestFocus() ?: skipButton.takeIf { it.visibility == View.VISIBLE }?.requestFocus()
+            } else {
                 skipButton.isFocusable = false
                 skipButton.isFocusableInTouchMode = false
-                if (skipButton.hasFocus()) playerView.requestFocus()
+                if (skipButton.hasFocus() || progressBar?.hasFocus() == true) playerView.requestFocus()
             }
         })
 
@@ -407,7 +425,7 @@ class PlayerActivity : AppCompatActivity() {
         if (playerView.isControllerFullyVisible) {
             skipButton.isFocusable = true
             skipButton.isFocusableInTouchMode = true
-            skipButton.requestFocus()
+            progressBar?.requestFocus()
         }
     }
 
