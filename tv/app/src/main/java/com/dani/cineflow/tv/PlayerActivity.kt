@@ -89,6 +89,11 @@ class PlayerActivity : AppCompatActivity() {
     private var metaName: String? = null
     private var metaPoster: String? = null
     private var nextPending = false
+    private var retryCount = 0
+    private var retrying = false
+    private var lastProgressAt = 0L
+    private var lastPosition = 0L
+    private var bufferingSince = 0L
     // A torrent played on the TV itself: how it's going, while the picture waits for it
     private var torrent = false
     private val torrentStatus = object : Runnable {
@@ -196,6 +201,7 @@ class PlayerActivity : AppCompatActivity() {
         episodeNumber = stream.optInt("episode", 0)
         currentVideoId = stream.optString("videoId").takeIf { it.isNotBlank() }
         nextVideoId = stream.optString("nextVideoId").takeIf { it.isNotBlank() }
+        retryCount = stream.optInt("retryCount", 0)
         nextSeason = stream.optInt("nextSeason", 0)
         nextEpisode = stream.optInt("nextEpisode", 0)
         nextTitle = stream.optString("nextTitle").takeIf { it.isNotBlank() }
@@ -314,7 +320,15 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 lastError = (if (torrent) TorrentEngine.failed() else null) ?: describe(error)
-                finishWith(error = lastError)
+                retryOrFinish(lastError ?: "error de reproducción")
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) {
+                    lastProgressAt = android.os.SystemClock.elapsedRealtime()
+                    lastPosition = exo.currentPosition
+                    bufferingSince = 0L
+                }
             }
         })
         exo.prepare()
@@ -480,6 +494,65 @@ class PlayerActivity : AppCompatActivity() {
         val exo = player ?: return
         val duration = exo.duration.takeIf { it != C.TIME_UNSET } ?: 0L
         PlaybackBus.listener?.onProgress(exo.currentPosition, duration, !exo.isPlaying)
+
+        if (closed || retrying) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        val playing = exo.isPlaying
+        if (playing && exo.currentPosition > lastPosition + 500L) {
+            lastPosition = exo.currentPosition
+            lastProgressAt = now
+            bufferingSince = 0L
+        }
+        if (exo.playbackState == Player.STATE_BUFFERING) {
+            if (bufferingSince == 0L) bufferingSince = now
+            if (now - bufferingSince > 20_000L) retryOrFinish("el canal dejó de responder")
+        } else {
+            bufferingSince = 0L
+        }
+        if (playing && lastProgressAt > 0L && now - lastProgressAt > 15_000L) {
+            retryOrFinish("la reproducción se ha quedado congelada")
+        }
+    }
+
+    private fun retryOrFinish(reason: String) {
+        if (closed || retrying) return
+        if (retryCount >= 2) {
+            finishWith(error = reason)
+            return
+        }
+        val json = try { JSONObject(streamJson ?: "{}") } catch (_: Exception) { return finishWith(error = reason) }
+        val url = json.optString("url")
+        val live = url.contains("/ace/getstream") || url.startsWith("acestream://")
+        if (!live) {
+            json.put("startMs", player?.currentPosition ?: 0L)
+        } else {
+            json.put("startMs", 0L)
+        }
+        json.put("retryCount", retryCount + 1)
+        retrying = true
+        handler.removeCallbacksAndMessages(null)
+        seekFlash.text = "Reconectando…"
+        seekFlash.visibility = View.VISIBLE
+        player?.pause()
+
+        fun launch() {
+            handler.postDelayed({
+                if (isFinishing || isDestroyed) return@postDelayed
+                val intent = Intent(this, PlayerActivity::class.java)
+                    .putExtra(EXTRA_STREAM, json.toString())
+                startActivity(intent)
+                finish()
+            }, 900L)
+        }
+
+        if (url.contains(":${OutpaceEngine.PORT}/")) {
+            thread(name = "cineflow-engine-retry", isDaemon = true) {
+                val ok = OutpaceEngine.ensureStarted(applicationContext)
+                runOnUiThread { if (ok) launch() else finishWith(error = reason) }
+            }
+        } else {
+            launch()
+        }
     }
 
     private fun finishWith(ended: Boolean = false, error: String? = null) {
@@ -520,7 +593,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        if (!closed) finishWith()
+        if (!closed && !retrying) finishWith()
         handler.removeCallbacksAndMessages(null)
         player?.release()
         player = null
