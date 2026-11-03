@@ -1,0 +1,71 @@
+name: CineFlow TV release
+
+# Builds CineFlow.apk on every published GitHub release and attaches it to that release.
+# The APK is signed with the CineFlow update key stored in repository secrets:
+#   CINEFLOW_KEYSTORE_B64       base64 of the keystore
+#   CINEFLOW_KEYSTORE_PASSWORD  keystore/key password (alias: androiddebugkey)
+# The key must stay the same between releases or Android will refuse the update.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tv
+    env:
+      HAS_KEY: ${{ secrets.CINEFLOW_KEYSTORE_B64 != '' }}
+    steps:
+      - name: Signing key needed
+        if: env.HAS_KEY != 'true'
+        working-directory: .
+        run: |
+          echo "::warning::CINEFLOW_KEYSTORE_B64 is not set; the APK will not be built."
+          exit 0
+
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+
+      - uses: actions/setup-java@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Decode signing key
+        if: env.HAS_KEY == 'true'
+        working-directory: .
+        run: echo "${{ secrets.CINEFLOW_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/cineflow.jks"
+
+      - name: Build APK
+        if: env.HAS_KEY == 'true'
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk CineFlow.apk
+        env:
+          DXBI_TV_KEYSTORE: ${{ runner.temp }}/cineflow.jks
+          DXBI_TV_KEYSTORE_PASSWORD: ${{ secrets.CINEFLOW_KEYSTORE_PASSWORD }}
+          DXBI_TV_KEY_ALIAS: androiddebugkey
+          DXBI_TV_KEY_PASSWORD: ${{ secrets.CINEFLOW_KEYSTORE_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          name: CineFlow.apk
+          path: tv/CineFlow.apk
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: env.HAS_KEY == 'true' && github.event_name == 'release'
+        working-directory: .
+        run: gh release upload "${{ github.event.release.tag_name }}" tv/CineFlow.apk --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

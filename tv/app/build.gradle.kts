@@ -20,9 +20,10 @@ fun signingValue(key: String, env: String): String? = keystoreProps.getProperty(
 android {
     namespace = "com.notdxbi.dxbi.tv"
     compileSdk = 35
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
-        applicationId = "com.notdxbi.dxbi.tv"
+        applicationId = "com.dani.cineflow.tv"
         minSdk = 24
         targetSdk = 35
         versionName = dxbiVersion
@@ -44,15 +45,15 @@ android {
     buildTypes {
         debug {
             // the emulator is x86
-            ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64") }
+            ndk { abiFilters += listOf("armeabi-v7a") }
         }
         release {
             // TVs and sticks are ARM: only those copies of the torrent engine (about 14 MB each)
-            ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
+            ndk { abiFilters += listOf("armeabi-v7a") }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (signingValue("storeFile", "DXBI_TV_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release")
+            if (signingValue("storeFile", "DXBI_TV_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release") else signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -69,20 +70,12 @@ android {
         jniLibs { useLegacyPackaging = true }
     }
 
-    // The built-in dx.bi plugin is the one at the repository root, copied in at build time
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/dxbiAssets"))
 }
-
-val copyPlugin by tasks.registering(Copy::class) {
-    from(pluginFile)
-    into(layout.buildDirectory.dir("generated/dxbiAssets"))
-}
-tasks.named("preBuild") { dependsOn(copyPlugin) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("androidx.webkit:webkit:1.12.1")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.5.1")
     implementation("androidx.media3:media3-exoplayer-dash:1.5.1")

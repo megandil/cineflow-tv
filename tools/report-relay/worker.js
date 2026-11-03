@@ -1,17 +1,17 @@
-// dx.bi — Copyright (C) 2026 dx.bi. GNU General Public License, version 3 or later (see LICENSE).
+// CineFlow — Copyright (C) 2026 CineFlow. GNU General Public License, version 3 or later (see LICENSE).
 //
-// dx.bi's problem-report relay (a Cloudflare Worker). The apps send their "Report a problem" reports
+// CineFlow's problem-report relay (a Cloudflare Worker). The apps send their "Report a problem" reports
 // here; this posts them to a private Discord channel. The Discord webhook stays a secret of this
-// Worker (DISCORD_WEBHOOK), so it never appears in dx.bi's open-source code, and can be replaced
+// Worker (DISCORD_WEBHOOK), so it never appears in CineFlow's open-source code, and can be replaced
 // here without updating the apps.
 //
-// Only well-formed dx.bi reports get through: the Discord message is written here from checked
+// Only well-formed CineFlow reports get through: the Discord message is written here from checked
 // fields (nothing pings, no links), the full report is attached as a file, and each address can
 // send a few reports a minute at most.
 
 const ALLOWED_ORIGINS = new Set(["https://web.stremio.com"]);
 const MAX_BODY = 256 * 1024;
-const WHERE = new Set(["dx.bi app", "dx.bi TV", "Stremio Enhanced plugin"]);
+const WHERE = new Set(["CineFlow app", "CineFlow TV", "Stremio Enhanced plugin"]);
 
 function cors(request) {
   const origin = request.headers.get("Origin") || "";
@@ -67,10 +67,10 @@ export default {
     try {
       report = JSON.parse(raw);
     } catch (_) {
-      return reply(request, 400, { error: "That isn't a dx.bi report." });
+      return reply(request, 400, { error: "That isn't a CineFlow report." });
     }
 
-    // The shape every dx.bi report has
+    // The shape every CineFlow report has
     const ok = report && typeof report === "object"
       && /^[A-Z0-9]{6}$/.test(report.code || "")
       && /^\d+\.\d+\.\d+$/.test(report.dxbi || "")
@@ -78,7 +78,7 @@ export default {
       && typeof report.route === "string" && report.route.length < 40
       && (report.description == null || typeof report.description === "string")
       && Array.isArray(report.recentErrors);
-    if (!ok) return reply(request, 400, { error: "That isn't a dx.bi report." });
+    if (!ok) return reply(request, 400, { error: "That isn't a CineFlow report." });
 
     const description = plain(report.description || "", 600).trim();
     const lastError = report.recentErrors.length ? plain(report.recentErrors[report.recentErrors.length - 1], 180) : "";
@@ -90,7 +90,7 @@ export default {
     ].join("\n").slice(0, 1900);
 
     const form = new FormData();
-    form.append("payload_json", JSON.stringify({ username: "dx.bi reports", content, allowed_mentions: { parse: [] }, flags: 4 }));
+    form.append("payload_json", JSON.stringify({ username: "CineFlow reports", content, allowed_mentions: { parse: [] }, flags: 4 }));
     form.append("files[0]", new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }), `dxbi-report-${report.code}.json`);
     const sent = await fetch(env.DISCORD_WEBHOOK, { method: "POST", body: form });
     if (!sent.ok) return reply(request, 502, { error: sent.status === 429 ? "Too many reports right now: try again in a few minutes." : "Couldn't pass the report on." });

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// The built-in dx.bi plugin is the one at the repository root
+// The built-in CineFlow plugin is the one at the repository root
 const pluginSrc = path.join(__dirname, '..', 'dxbi.plugin.js');
 fs.mkdirSync(path.join(__dirname, 'static'), { recursive: true });
 fs.copyFileSync(pluginSrc, path.join(__dirname, 'static', 'dxbi.plugin.js'));

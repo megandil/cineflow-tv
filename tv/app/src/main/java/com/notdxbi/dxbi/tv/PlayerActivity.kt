@@ -1,5 +1,7 @@
 package com.notdxbi.dxbi.tv
 
+import android.content.Intent
+
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
@@ -34,6 +36,7 @@ import androidx.media3.ui.SubtitleView
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 /**
  * The native player: plays the stream Stremio picked (MKV, HEVC, HDR and surround sound included,
@@ -62,7 +65,7 @@ class PlayerActivity : AppCompatActivity() {
     }
     private val hideFlash = Runnable { seekFlash.visibility = View.GONE }
 
-    // Skip intro / recap / credits: the episode's times (seconds; end -1 = to the end), whether dx.bi
+    // Skip intro / recap / credits: the episode's times (seconds; end -1 = to the end), whether CineFlow
     // skips by itself ("intro": intros and recaps, "all": credits too), and which were skipped already
     private class Segment(val type: String, val start: Double, val end: Double)
     private var segments: List<Segment> = emptyList()
@@ -70,6 +73,10 @@ class PlayerActivity : AppCompatActivity() {
     private val autoSkipped = mutableSetOf<Segment>()
     private var showing: Segment? = null
     private lateinit var skipButton: TextView
+    private var streamJson: String? = null
+    private var openDetailOnBack = false
+    private var nativeMetaId: String? = null
+    private var nativeMetaType: String? = null
     // A torrent played on the TV itself: how it's going, while the picture waits for it
     private var torrent = false
     private val torrentStatus = object : Runnable {
@@ -121,7 +128,11 @@ class PlayerActivity : AppCompatActivity() {
         skipButton = findViewById(R.id.skip_button)
         skipButton.setOnClickListener { doSkip() }
 
-        val stream = JSONObject(intent.getStringExtra(EXTRA_STREAM) ?: "{}")
+        streamJson = intent.getStringExtra(EXTRA_STREAM)
+        val stream = JSONObject(streamJson ?: "{}")
+        openDetailOnBack = stream.optBoolean("openDetailOnBack", false)
+        nativeMetaId = stream.optString("metaId").takeIf { it.isNotBlank() }
+        nativeMetaType = stream.optString("metaType", "movie")
         segments = stream.optJSONArray("skips")?.let { list ->
             (0 until list.length()).mapNotNull { i ->
                 val o = list.optJSONObject(i) ?: return@mapNotNull null
@@ -147,13 +158,15 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
 
+        // The AceStream engine on the TV starts buffering peers before it answers with the stream.
+        val aceStream = url.startsWith("acestream://") || url.contains(":6878/ace/")
         // Addons can ask for headers on their links (Stremio's proxyHeaders)
         val headers = mutableMapOf<String, String>()
         stream.optJSONObject("headers")?.let { h -> h.keys().forEach { k -> headers[k] = h.optString(k) } }
         val http = OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)
             // a torrent's first bytes wait for its details and first pieces to come from peers
-            .readTimeout(if (torrent) 150L else 30L, TimeUnit.SECONDS)
+            .readTimeout(if (torrent || aceStream) 150L else 30L, TimeUnit.SECONDS)
             .followRedirects(true)
             .build()
         // (an addon's own User-Agent replaces ours: Media3 would send both)
@@ -186,7 +199,7 @@ class PlayerActivity : AppCompatActivity() {
             if (visibility == View.VISIBLE) playerView.findViewById<View>(androidx.media3.ui.R.id.exo_play_pause)?.requestFocus()
         })
 
-        // Subtitles start off, like Netflix (and dx.bi's default): pick one from the subtitles button.
+        // Subtitles start off, like Netflix (and CineFlow's default): pick one from the subtitles button.
         // Files with several audio tracks (dual-audio releases) start in Stremio's audio language
         // (Settings → Player), when they have it
         val audioLanguage = stream.optString("audioLanguage").ifEmpty { null }
@@ -252,6 +265,8 @@ class PlayerActivity : AppCompatActivity() {
      * pauses or plays. With the controls showing, the arrows move between them as usual.
      */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount > 0 &&
+            (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER)) return true
         val exo = player ?: return super.dispatchKeyEvent(event)
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
@@ -344,8 +359,17 @@ class PlayerActivity : AppCompatActivity() {
         val exo = player
         val duration = exo?.duration?.takeIf { it != C.TIME_UNSET } ?: 0L
         val position = if (ended) duration else exo?.currentPosition ?: 0L
+        NativeProgressStore.record(this, streamJson, position, duration, ended)
+        val syncJson = streamJson
+        if (syncJson != null) thread(isDaemon = true) { StremioSession.syncProgress(this, syncJson, position, duration, ended) }
         PlaybackBus.closed(position, duration, ended, error)
         if (torrent) TorrentEngine.close()
+        // Opened directly from Continue Watching: Back must land on the title's ficha, not Home.
+        if (openDetailOnBack && nativeMetaId != null && !isFinishing) {
+            startActivity(Intent(this, NativeDetailActivity::class.java)
+                .putExtra(NativeDetailActivity.EXTRA_ID, nativeMetaId)
+                .putExtra(NativeDetailActivity.EXTRA_TYPE, nativeMetaType ?: "movie"))
+        }
         finish()
     }
 
@@ -353,6 +377,14 @@ class PlayerActivity : AppCompatActivity() {
         super.onPause()
         // Leaving the app (Home button) pauses, and the progress so far is kept
         player?.pause()
+        val p = player
+        if (p != null) {
+            NativeProgressStore.record(this, streamJson, p.currentPosition, if (p.duration > 0) p.duration else 0L, false)
+            val syncJson = streamJson
+            val syncPos = p.currentPosition
+            val syncDur = if (p.duration > 0) p.duration else 0L
+            if (syncJson != null) thread(isDaemon = true) { StremioSession.syncProgress(this, syncJson, syncPos, syncDur, false) }
+        }
         report()
     }
 

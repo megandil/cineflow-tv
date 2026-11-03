@@ -1,11 +1,11 @@
 /**
- * @name dx.bi
- * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, critic reviews, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player with black-bar removal, night mode and subtitle sync, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.22.1
- * @author dx.bi
+ * @name CineFlow
+ * @description The CineFlow experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, critic reviews, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player with black-bar removal, night mode and subtitle sync, watch parties with friends, a cinematic intro and interface sounds. Use with the CineFlow theme.
+ * @version 2.23.0
+ * @author CineFlow
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
-// dx.bi — Copyright (C) 2026 dx.bi. Free software under the GNU General Public License, version 3
+// CineFlow — Copyright (C) 2026 CineFlow. Free software under the GNU General Public License, version 3
 // or later (see LICENSE and NOTICE.md at github.com/notdxbi/dxbi-stremio). Versions up to 2.15.9: MIT.
 
 (function () {
@@ -19,7 +19,7 @@
   // Stremio Enhanced loads each plugin as <script id="<file name>">, which tells us our settings key
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
-  const PLUGIN_VERSION = "2.22.1"; // kept in step with @version by tools/bundle-theme.mjs
+  const PLUGIN_VERSION = "2.23.0"; // kept in step with @version by tools/bundle-theme.mjs
   // Recent messages and errors, kept for problem reports (see `report`)
   const recent = { logs: [], errors: [] };
   const remember = (list, text) => {
@@ -27,7 +27,7 @@
     if (list.length > 60) list.shift();
   };
   const log = (...args) => {
-    console.log("[dx.bi]", ...args);
+    console.log("[CineFlow]", ...args);
     remember(recent.logs, args.map((a) => (a instanceof Error ? a.message : typeof a === "object" ? (() => { try { return JSON.stringify(a); } catch (_) { return String(a); } })() : String(a))).join(" "));
   };
   window.addEventListener("error", (e) => remember(recent.errors, `${e.message || "error"} @ ${(e.filename || "").split("/").pop()}:${e.lineno || 0}`));
@@ -43,17 +43,17 @@
       console[level] = wrapped;
     }
   }
-  // dx.bi also comes as its own desktop app (built on Stremio Enhanced): messages name the app
+  // CineFlow also comes as its own desktop app (built on Stremio Enhanced): messages name the app
   // you're in, and the folder its streaming server lives in
   const IN_APP = /\bdxbi\//.test(navigator.userAgent);
-  // dx.bi TV (Android TV) plays every stream in its own native player, so the in-page player
+  // CineFlow TV (Android TV) plays every stream in its own native player, so the in-page player
   // features (seek previews, picture panel, skip buttons, watch parties…) stand aside there
   const IN_TV = /\bdxbi-tv\//.test(navigator.userAgent);
   // A TV stick can't keep up with smooth scrolling down the page (each new row is drawn as it
   // slides in): jumps there. Rows still glide sideways (page()): that runs on the graphics chip alone.
   const SCROLL = IN_TV ? "instant" : "smooth";
-  const SETTINGS_SECTION = IN_APP || IN_TV ? "dx.bi" : "Enhanced";
-  const APP_NAME = IN_APP ? "dx.bi" : "Stremio Enhanced";
+  const SETTINGS_SECTION = IN_APP || IN_TV ? "CineFlow" : "Enhanced";
+  const APP_NAME = IN_APP ? "CineFlow" : "Stremio Enhanced";
 
 
   // Stremio Web can drop window.core on some routes (Stremio Enhanced works around the same thing),
@@ -96,7 +96,7 @@
     billboard: true,
     billboardSource: "mixed",
     billboardInterval: "9",
-    previews: true,
+    previews: !IN_TV,
     ratings: true,
     reviews: true,
     tmdbKey: "",
@@ -104,7 +104,7 @@
     wideContinue: true,
     videoRowsOnly: true,
     playerExtras: true,
-    seekPreviews: true,
+    seekPreviews: !IN_TV,
     remainingTime: true,
     playerClock: true,
     crispPosters: true,
@@ -138,6 +138,10 @@
     whoIsWatching: true,
     enhance: "off",
     streamTools: true,
+    // CineFlow: choose the best Spanish (Spain) source itself, and keep the TV UI light.
+    autoPick: true,
+    maxQuality: "2160",
+    performance: true,
     splash: true,
     introSound: true,
     uiSounds: false,
@@ -170,7 +174,7 @@
         { label: "Mono", value: "white" },
       ],
     },
-    { key: "tvTorrents", type: "toggle", label: "Play torrents on this TV", description: "Off: torrents go through debrid (Real-Debrid, TorBox…) or a streaming server on a computer, and you're asked each time otherwise. On: dx.bi TV downloads torrents itself, connecting to other people sharing them.", defaultValue: DEFAULTS.tvTorrents, tvOnly: true },
+    { key: "tvTorrents", type: "toggle", label: "Play torrents on this TV", description: "Off: torrents go through debrid (Real-Debrid, TorBox…) or a streaming server on a computer, and you're asked each time otherwise. On: CineFlow TV downloads torrents itself, connecting to other people sharing them.", defaultValue: DEFAULTS.tvTorrents, tvOnly: true },
     {
       key: "focusColour",
       type: "select",
@@ -184,7 +188,7 @@
         { label: "Yellow", value: "yellow" },
       ],
     },
-    { key: "builtInTheme", type: "toggle", label: "dx.bi look built in", description: `Use the dx.bi theme without installing it separately. Steps aside by itself when you apply another theme in Settings → ${SETTINGS_SECTION} → Themes.`, defaultValue: DEFAULTS.builtInTheme },
+    { key: "builtInTheme", type: "toggle", label: "CineFlow look built in", description: `Use the CineFlow theme without installing it separately. Steps aside by itself when you apply another theme in Settings → ${SETTINGS_SECTION} → Themes.`, defaultValue: DEFAULTS.builtInTheme },
     { key: "videoRowsOnly", type: "toggle", label: "Only movie, series & anime rows on Home", description: "Hides rows from addons that list other things, like a debrid account's downloads or YouTube channels. They stay in Discover.", defaultValue: DEFAULTS.videoRowsOnly },
     { key: "billboard", type: "toggle", label: "Billboard on Home", description: "Large rotating feature banner at the top of Home.", defaultValue: DEFAULTS.billboard },
     {
@@ -213,7 +217,7 @@
     },
     { key: "previews", type: "toggle", label: "Hover previews", description: IN_TV ? "Show a details card when a title stays selected for a moment." : "Show a details card when you rest the mouse on a title.", defaultValue: DEFAULTS.previews },
     { key: "ratings", type: "toggle", label: "Ratings on posters", description: "Small IMDb badge on posters, from your addons' data (Cinemeta fills any gaps). Anime from Kitsu or MyAnimeList catalogs gets its Kitsu or AniList score.", defaultValue: DEFAULTS.ratings },
-    { key: "animeTitles", type: "toggle", label: "Titles on anime artwork", description: "Anime catalogs' cover art usually has no title on it: dx.bi writes the name at the bottom of each card in Home and Search rows.", defaultValue: DEFAULTS.animeTitles },
+    { key: "animeTitles", type: "toggle", label: "Titles on anime artwork", description: "Anime catalogs' cover art usually has no title on it: CineFlow writes the name at the bottom of each card in Home and Search rows.", defaultValue: DEFAULTS.animeTitles },
     { key: "wideContinue", type: "toggle", label: "Wide Continue Watching", description: "Show Continue Watching as landscape cards with title art.", defaultValue: DEFAULTS.wideContinue },
     { key: "playerExtras", type: "toggle", label: "Netflix-style player extras", description: "Back/forward 10 seconds buttons, title in the control bar and play/pause feedback.", defaultValue: DEFAULTS.playerExtras },
     {
@@ -371,7 +375,7 @@
     { key: "playerKeys", type: "toggle", label: "Extra keyboard shortcuts", description: "0–9 jump to 0–90% of the video, and ? shows every shortcut.", defaultValue: DEFAULTS.playerKeys },
     { key: "watchStats", type: "toggle", label: "Watch stats", description: "Counts how long you watch (on this PC only). See them under your profile menu → Your stats.", defaultValue: DEFAULTS.watchStats },
     { key: "whoIsWatching", type: "toggle", label: "Who's watching?", description: "With more than one viewer, choose who's watching at start. Each viewer has their own library, stats, volume and party name.", defaultValue: DEFAULTS.whoIsWatching },
-    { key: "pip", type: "toggle", label: "Picture-in-picture button", description: "Keep watching in a small floating window while you use other apps. In the dx.bi app it also keeps playing while you browse dx.bi.", defaultValue: DEFAULTS.pip },
+    { key: "pip", type: "toggle", label: "Picture-in-picture button", description: "Keep watching in a small floating window while you use other apps. In the CineFlow app it also keeps playing while you browse CineFlow.", defaultValue: DEFAULTS.pip },
     { key: "addonTools", type: "toggle", label: "Addon order & backup", description: "Adds a button to the Addons page to reorder your addons (the order streams and catalogs appear in) and to back them up or restore them.", defaultValue: DEFAULTS.addonTools },
     { key: "externalPlayer", type: "toggle", label: "Open in mpv / VLC button", description: "Adds a button to the player that hands the stream to mpv or VLC (only shown when one is installed). Handy when a file stutters or won't play here: they handle more formats and are lighter on slower PCs.", defaultValue: DEFAULTS.externalPlayer },
     { key: "playerClock", type: "toggle", label: "Show the time in the player", description: "The time now and when this ends, at the top right, while the controls are showing.", defaultValue: DEFAULTS.playerClock },
@@ -390,6 +394,8 @@
     },
     { key: "remainingTime", type: "toggle", label: "Show time remaining", description: "The player clock counts down, like Netflix (click it to switch back).", defaultValue: DEFAULTS.remainingTime },
     { key: "streamTools", type: "toggle", label: "Stream sorting & filters", description: "Sort streams by quality, seeds or size and filter by quality, language, source, provider, instant and HDR.", defaultValue: DEFAULTS.streamTools },
+    { key: "autoPick", type: "toggle", label: "Reproducir la mejor fuente automáticamente", description: "Elige solo la mejor fuente en español de España (máxima calidad). Si no hay ninguna, avisa y deja la lista para elegir a mano. El botón «Elegir fuente» cancela la elección automática.", defaultValue: DEFAULTS.autoPick },
+    { key: "performance", type: "toggle", label: "Modo rendimiento", description: "Quita blur, sombras y animaciones pesadas, y desactiva las vistas previas y los fotogramas de la barra de avance. Recomendado en Fire TV.", defaultValue: DEFAULTS.performance },
     { key: "watchParty", type: "toggle", label: "Watch party", description: "Watch in sync with friends: start a party from the people button, send the code, and everyone opens the same title from their own addons and debrid account. Shared play, pause and seeking, waits for anyone buffering, chat and reactions. End-to-end encrypted, no account needed.", defaultValue: DEFAULTS.watchParty },
     { key: "partyFollow", type: "toggle", label: "Watch party: follow the host", description: "Open whatever the host plays (including the next episode), picking the same release from your own addons.", defaultValue: DEFAULTS.partyFollow },
     { key: "partyActivity", type: "toggle", label: "Watch party: chat & activity in the player", description: "Messages, reactions and who paused or skipped, shown briefly over the video.", defaultValue: DEFAULTS.partyActivity },
@@ -411,13 +417,13 @@
     },
   ];
 
-  // Settings come in groups (the dx.bi app and dx.bi TV show them as sections with a search). Each
+  // Settings come in groups (the CineFlow app and CineFlow TV show them as sections with a search). Each
   // option carries its group's name, and they're listed group by group.
   const SETTING_GROUPS = [
-    ["Look", ["accent", "focusColour", "builtInTheme", "crispPosters", "ratings", "animeTitles", "wideContinue"]],
+    ["Look", ["accent", "focusColour", "builtInTheme", "crispPosters", "ratings", "animeTitles", "wideContinue", "performance"]],
     ["Home", ["myList", "videoRowsOnly", "billboard", "billboardSource", "billboardInterval", "newEpisodes", "airingRow", "whoIsWatching"]],
     ["Hover cards & trailers", ["previews", "trailers", "trailerDelay"]],
-    ["Browsing & library", ["watchedTitles", "librarySort", "streamTools", "addonTools", "watchStats", "reviews", "tmdbKey", "mdblistKey"]],
+    ["Browsing & library", ["watchedTitles", "librarySort", "streamTools", "autoPick", "addonTools", "watchStats", "reviews", "tmdbKey", "mdblistKey"]],
     ["Player", ["tvTorrents", "playerExtras", "remainingTime", "playerClock", "seekPreviews", "enhance", "pictureSound", "streamStats", "rememberPlayback", "playerKeys", "pip", "externalPlayer", "convertVideo"]],
     ["Subtitles", ["subtitleStyle", "subtitleFont", "subtitleCustomFont", "subtitlesStart", "hdrSubtitles"]],
     ["Episodes & skipping", ["skipButtons", "autoSkip", "upNext", "preloadNext", "fillerGuide", "skipFiller"]],
@@ -448,9 +454,28 @@
     return out;
   }
 
+  function tuneTvPerformance() {
+    if (!IN_TV || !settings.performance) return;
+    // These are the expensive bits: image decode, hover cards, seek thumbnails, library-wide
+    // episode metadata and reviews. The performance switch turns them off together.
+    settings.previews = false;
+    settings.trailers = false;
+    settings.seekPreviews = false;
+    settings.crispPosters = false;
+    settings.newEpisodes = false;
+    settings.airingRow = false;
+    settings.reviews = false;
+    settings.billboardInterval = "0";
+    settings.preloadNext = false;
+    settings.watchParty = false;
+    settings.watchStats = false;
+    settings.fillerGuide = false;
+  }
+
   async function loadSettings() {
     // Cached copy first so the UI is right on the very first frame
     try { Object.assign(settings, normalise(JSON.parse(localStorage.getItem("dxbi.settings") || "null"))); } catch (_) { /* ignore */ }
+    tuneTvPerformance();
     applyAccent();
     applySubtitleStyle();
     if (!API) return;
@@ -459,12 +484,13 @@
     try {
       await window.StremioEnhancedAPI?.clearRegisteredSettings?.(PLUGIN_KEY);
     } catch (_) { /* nothing registered yet */ }
-    // dx.bi TV's own options stay out of the app's and Stremio Enhanced's settings
+    // CineFlow TV's own options stay out of the app's and Stremio Enhanced's settings
     Promise.resolve(API.registerSettings(SCHEMA.filter((o) => IN_TV || !o.tvOnly))).catch((err) => log("settings not registered", err));
     const values = await Promise.all(
       Object.keys(DEFAULTS).map((key) => API.getSetting(key).then((v) => [key, v]).catch(() => [key, null]))
     );
     Object.assign(settings, normalise(Object.fromEntries(values)));
+    tuneTvPerformance();
     persistSettings();
     builtInTheme.ensure();
     // the saved values can differ from the cached copy applied at start (a TV has no cached copy)
@@ -472,6 +498,7 @@
     applySubtitleStyle();
     API.onSettingsSaved((all) => {
       Object.assign(settings, normalise(all));
+      tuneTvPerformance();
       persistSettings();
       builtInTheme.ensure();
       subtitlesStart.apply().catch(() => { /* core busy */ });
@@ -1004,7 +1031,7 @@
         <div class="dx-hero-slide" data-i="${i}">
           <div class="dx-hero-backdrop" style="background-image:url('${art.background(m.id)}')"></div>
           <div class="dx-hero-content">
-            <div class="dx-hero-kicker"><b>DX.BI</b>${type === "series" ? "Series" : "Film"}</div>
+            <div class="dx-hero-kicker"><b>CINEFLOW</b>${type === "series" ? "Series" : "Film"}</div>
             <img class="dx-hero-logo" src="${art.logo(m.id)}" alt="${esc(m.name)}" draggable="false">
             <div class="dx-hero-meta">${metaBits.join("")}</div>
             <p class="dx-hero-desc">${esc(m.description)}</p>
@@ -2017,7 +2044,7 @@
         this.fromPreview(focused, e);
         return;
       }
-      // Titles: dx.bi moves between them itself, so rows page smoothly and titles out of view
+      // Titles: CineFlow moves between them itself, so rows page smoothly and titles out of view
       // (or under the hover card) can still be reached. Everything else is Stremio's.
       if (focused && focused.closest && this.fromFilters(focused, e)) return;
       const card = focused && focused.closest && focused.closest('#app [class*="meta-item-container"]');
@@ -2442,7 +2469,7 @@
       }
     },
 
-    // A grid's filters (Library, Discover): Stremio's type menu and sort chips, then dx.bi's own
+    // A grid's filters (Library, Discover): Stremio's type menu and sort chips, then CineFlow's own
     // sort buttons and genre menu. Each is a row of its own: left and right stay in it, up and down
     // move between them, and down from the last goes back to the grid in the column it was left from.
     FILTERS: '[class*="selectable-inputs-container"], .dxl-tools',
@@ -2585,7 +2612,7 @@
     },
 
     // Whatever lights up under the mouse lights up the same way when the keyboard selects it:
-    // every hover style of Stremio's (and any theme's) gets a :focus-visible twin. dx.bi's own
+    // every hover style of Stremio's (and any theme's) gets a :focus-visible twin. CineFlow's own
     // styles already have theirs. Built once, the first time the keyboard is used.
     looks() {
       const sheets = [...document.styleSheets].filter((sh) => !(sh.ownerNode && /^dx-/.test(sh.ownerNode.id || "")));
@@ -3059,7 +3086,7 @@
           </div>`).join("")}
           ${tmdb.total > tmdb.reviews.length ? `<a class="dxr-link" href="${esc(tmdb.url)}" target="_blank" rel="noopener">All ${esc(tmdb.total)} reviews on TMDB</a>` : ""}</div>`);
       } else if (tmdb && tmdb.error) {
-        parts.push(`<div class="dxe-section"><div class="dxe-label">Audience reviews</div><p class="dxr-note">${esc(tmdb.error)}. Check the key in Settings → ${SETTINGS_SECTION} → Plugins → dx.bi.</p></div>`);
+        parts.push(`<div class="dxe-section"><div class="dxe-label">Audience reviews</div><p class="dxr-note">${esc(tmdb.error)}. Check the key in Settings → ${SETTINGS_SECTION} → Plugins → CineFlow.</p></div>`);
       } else if (tmdb) {
         parts.push(`<div class="dxe-section"><div class="dxe-label">Audience reviews</div><p class="dxr-note">No one has reviewed this on TMDB yet.</p></div>`);
       }
@@ -3068,7 +3095,7 @@
       const hints = [];
       if (!settings.tmdbKey.trim()) hints.push("a free TMDB key for audience reviews");
       if (!settings.mdblistKey.trim()) hints.push("a free MDBList key for audience and Letterboxd scores");
-      if (hints.length) parts.push(`<p class="dxr-note">Want more? Add ${hints.join(" and ")} in Settings → ${SETTINGS_SECTION} → Plugins → dx.bi.</p>`);
+      if (hints.length) parts.push(`<p class="dxr-note">Want more? Add ${hints.join(" and ")} in Settings → ${SETTINGS_SECTION} → Plugins → CineFlow.</p>`);
       const credits = [data.fromMdblist ? "Scores from MDBList" : scores.length ? "Scores from Wikidata" : "", wiki && wiki.text && wiki.text.length ? "Summary from Wikipedia (CC BY-SA)" : "", tmdb && tmdb.reviews ? "This product uses the TMDB API but is not endorsed or certified by TMDB" : ""].filter(Boolean);
       if (credits.length) parts.push(`<p class="dxr-credit">${credits.map(esc).join(" · ")}</p>`);
       return parts.join("");
@@ -3202,7 +3229,7 @@
         let f = key ? svg[key] : null;
         for (let n = 0; f && n < 4 && typeof f.memoizedProps?.name !== "string"; n++) f = f.return;
         const name = f && f.memoizedProps.name;
-        // Stremio's Cast button needs Chrome's Google Cast; in the dx.bi app and on TV it does nothing
+        // Stremio's Cast button needs Chrome's Google Cast; in the CineFlow app and on TV it does nothing
         if (name === "cast" && (IN_APP || IN_TV)) b.dataset.dxReplaced = "1";
         const label = name && STREMIO_BUTTON_LABELS[name];
         b.dataset.dxLabel = label || "-";
@@ -3378,7 +3405,7 @@
     try { shown = sessionStorage.getItem("dxbi.splash") === "1"; sessionStorage.setItem("dxbi.splash", "1"); } catch (_) { /* ignore */ }
     if (shown || !settings.splash || miniPlayer.info) return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    // dx.bi TV 2.20+ plays the film itself, in hardware, over the page while it loads
+    // CineFlow TV 2.20+ plays the film itself, in hardware, over the page while it loads
     if (IN_TV && window.__dxbiTv && window.__dxbiTv.nativeIntro) return;
 
     const el = document.createElement("div");
@@ -3421,10 +3448,10 @@
 
     const fallback = () => {
       // Simple, compositor-only animation if video playback isn't available
-      el.innerHTML = '<div class="dx-splash-mark">DX.BI</div>';
+      el.innerHTML = '<div class="dx-splash-mark">CINEFLOW</div>';
       setTimeout(finish, 1700);
     };
-    // Older dx.bi TV apps get the light version: decoding the film in the page is the heaviest moment
+    // Older CineFlow TV apps get the light version: decoding the film in the page is the heaviest moment
     // of a start, and on 2 GB sticks without AV1 hardware it was enough to stop it
     if (IN_TV) {
       fallback();
@@ -3483,9 +3510,9 @@
     // The player keeps Stremio's own title: other plugins read it to label the stream
     if (currentRoute() === "player") return;
     const current = document.title || "";
-    if (current === "dx.bi" || current.endsWith(" · dx.bi")) return;
+    if (current === "CineFlow" || current.endsWith(" · CineFlow")) return;
     const page = current.replace(/\s*[-–|]?\s*Stremio.*$/i, "").replace(/^web\.stremio\.com$/i, "").trim();
-    document.title = page ? `${page} · dx.bi` : "dx.bi";
+    document.title = page ? `${page} · CineFlow` : "CineFlow";
   }
 
   // ---------------------------------------------------------------------------
@@ -3509,7 +3536,7 @@
     [/\bmulti(?:[ .-]?audio|[ .-]?lang)?\b/i, "Multi audio"],
     [/\bdual[ .-]?audio\b/i, "Dual audio"],
     [/\benglish\b/i, "English"], [/\bitalian[oa]?\b/i, "Italian"], [/\b(?:french|truefrench|vff|vfq)\b/i, "French"],
-    [/\b(?:german|deutsch)\b/i, "German"], [/\b(?:spanish|castellano|espa[nñ]ol)\b/i, "Spanish"], [/\blatino\b/i, "Spanish (Latino)"],
+    [/\b(?:german|deutsch)\b/i, "German"], [/\b(?:spanish|castellano|espa[nñ]ol|spa|esp)\b/i, "Spanish"], [/\blatino\b/i, "Spanish (Latino)"],
     [/\brussian\b/i, "Russian"], [/\bhindi\b/i, "Hindi"], [/\bjapanese\b/i, "Japanese"], [/\bkorean\b/i, "Korean"],
     [/\bportugu[eê]se?\b/i, "Portuguese"], [/\bpolish\b/i, "Polish"], [/\bturkish\b/i, "Turkish"], [/\barabic\b/i, "Arabic"],
   ];
@@ -3525,8 +3552,10 @@
 
   function parseStream(el) {
     const nameEl = el.querySelector('[class*="addon-name"]');
-    const name = ((nameEl && nameEl.innerText) || "").trim();
-    const all = el.innerText || "";
+    // The list is hidden on Fire TV while CineFlow picks; innerText is empty for visibility:hidden,
+    // so read textContent as well or language/quality would never be seen.
+    const name = ((nameEl && (nameEl.innerText || nameEl.textContent)) || "").trim();
+    const all = el.innerText || el.textContent || "";
     const firstLine = name.split("\n")[0].trim() || "Unknown";
     const bracket = /^\s*\[([^\]]+)\]/.exec(firstLine);
     const provider = firstLine.replace(/^\s*\[[^\]]*\]\s*/, "").trim() || firstLine;
@@ -3564,7 +3593,7 @@
     for (const [re, label] of LANG_WORDS) if (re.test(all)) langs.add(label);
     if (!langs.size) langs.add("Not listed (usually English)");
 
-    return { provider, instant, res, hdr, dv, size, seeds, source, langs: [...langs] };
+    return { provider, instant, res, hdr, dv, size, seeds, source, langs: [...langs], text: all };
   }
 
   const streamTools = {
@@ -3575,6 +3604,9 @@
     })(),
     open: null,
     sig: "",
+    // CineFlow auto-pick state. It is per title/episode: one automatic choice, and a manual choice
+    // for that title stops it until the next one.
+    auto: { key: "", requested: false, manual: false, picked: false, clicking: false, lastSig: "", lastChange: 0, started: 0, timer: null, commit: null, note: null, playBtn: null, playRow: null, providerBtn: null, focusKey: "", focusTimer: null },
 
     save() {
       try { localStorage.setItem("dxbi.streams", JSON.stringify(this.state)); } catch (_) { /* ignore */ }
@@ -3593,12 +3625,25 @@
       const panel = document.querySelector('[class*="metadetails-content"] [class*="streams-list-container"]');
       const list = panel && panel.querySelector(':scope > [class*="streams-container"]');
       let bar = panel && panel.querySelector(":scope > .dx-streambar");
-      if (!settings.streamTools || !list || !list.offsetParent) {
+      if (!list || !list.offsetParent) {
+        this.autoReset();
+        if (this.auto.playBtn) this.auto.playBtn.remove();
+        if (this.auto.playRow) this.auto.playRow.remove();
+        this.auto.playBtn = null;
+        this.auto.playRow = null;
         if (bar) bar.remove();
         if (list) this.reset(list);
         return;
       }
       const items = [...list.querySelectorAll(':scope > [class*="stream-container"]')];
+      if (settings.autoPick) this.ensurePlayButton(items);
+      if (settings.autoPick) this.autoTick(list, items);
+      else this.autoReset();
+      if (!settings.streamTools) {
+        if (bar) bar.remove();
+        this.reset(list);
+        return;
+      }
       if (items.length < 3) {
         if (bar) bar.hidden = true;
         this.reset(list);
@@ -3612,6 +3657,237 @@
       list.classList.add("dx-sortable");
       const rows = items.map((el) => [el, this.data(el)]);
       this.apply(list, rows, bar);
+    },
+
+    autoKey() {
+      const title = document.querySelector('[class*="meta-preview"] [class*="title"]');
+      return `${location.hash || ""}|${((title && title.textContent) || "").trim().slice(0, 90)}`;
+    },
+
+    autoReset() {
+      clearTimeout(this.auto.timer);
+      clearTimeout(this.auto.commit);
+      clearTimeout(this.auto.focusTimer);
+      this.auto.timer = null;
+      this.auto.commit = null;
+      this.auto.focusTimer = null;
+      this.auto.key = "";
+      this.auto.requested = false;
+      this.auto.manual = false;
+      this.auto.picked = false;
+      this.auto.focusKey = "";
+      this.auto.clicking = false;
+      this.auto.lastSig = "";
+      this.auto.lastChange = 0;
+      this.auto.started = 0;
+      this.removeAutoNote();
+      if (this.auto.playBtn) this.auto.playBtn.remove();
+      if (this.auto.providerBtn) this.auto.providerBtn.remove();
+      if (this.auto.playRow) this.auto.playRow.remove();
+      this.auto.playBtn = null;
+      this.auto.providerBtn = null;
+      this.auto.playRow = null;
+    },
+
+    removeAutoNote() {
+      if (this.auto.note) this.auto.note.remove();
+      this.auto.note = null;
+    },
+
+    autoNote(text, withButton) {
+      if (!this.auto.note || !this.auto.note.isConnected) {
+        const note = document.createElement("div");
+        note.className = "dx-auto-overlay";
+        note.innerHTML = `<span></span><button type="button" data-act="manual">Elegir fuente</button>`;
+        document.body.append(note);
+        this.auto.note = note;
+      }
+      const span = this.auto.note.querySelector("span");
+      if (span.textContent !== text) span.textContent = text;
+      this.auto.note.classList.toggle("is-error", /^(No hay|No se encontraron|No se pudo)/.test(text));
+      this.auto.note.querySelector("button").hidden = !withButton;
+    },
+
+    isSpanishSpain(d) {
+      if (d.langs.includes("Spanish")) return true;
+      if (d.langs.includes("Spanish (Latino)")) return false;
+      if (d.langs.includes("Multi audio")) return false;
+      return /\b(?:castellano|espa[nñ]ol|spanish|spa|esp)\b/i.test(d.text || "");
+    },
+
+    autoStart() {
+      this.auto.requested = true;
+      this.auto.manual = false;
+      this.auto.picked = false;
+      this.auto.focusKey = "";
+      this.auto.key = this.autoKey();
+      this.auto.started = Date.now();
+      this.auto.lastChange = Date.now();
+      document.documentElement.classList.add("dx-autohide");
+      this.autoNote("Buscando la mejor fuente en español de España…", false);
+      this.ensure();
+    },
+
+    ensurePlayButton(items) {
+      const actions = document.querySelector('[class*="metadetails-content"] [class*="action-buttons-container"]');
+      if (!settings.autoPick || !items || !actions) {
+        if (this.auto.playBtn) this.auto.playBtn.remove();
+        if (this.auto.providerBtn) this.auto.providerBtn.remove();
+        if (this.auto.playRow) this.auto.playRow.remove();
+        this.auto.playBtn = null;
+        this.auto.providerBtn = null;
+        this.auto.playRow = null;
+        return;
+      }
+      if (!this.auto.playBtn || !this.auto.playBtn.isConnected) {
+        const first = actions.firstElementChild;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.tabIndex = 0;
+        btn.className = "dx-cf-play";
+        btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"></path></svg><span>Play</span>';
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.autoStart();
+        });
+        actions.insertBefore(btn, actions.firstChild);
+        this.auto.playBtn = btn;
+        this.auto.playRow = null;
+        if (!this.auto.providerBtn || !this.auto.providerBtn.isConnected) {
+          const provider = document.createElement("button");
+          provider.type = "button";
+          provider.tabIndex = 0;
+          provider.className = "dx-cf-provider";
+          provider.textContent = "Proveedor";
+          provider.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.openManualList();
+          });
+          actions.insertBefore(provider, btn.nextSibling);
+          this.auto.providerBtn = provider;
+        }
+        if (!this.auto.focusTimer) {
+          // A new title/episode must start on Play. On the same title, only take focus back if the
+          // page lost it to the body; never steal it from a control the viewer already reached.
+          const key = this.autoKey();
+          const fresh = this.auto.focusKey !== key;
+          if (fresh) this.auto.focusKey = key;
+          this.auto.focusTimer = setTimeout(() => {
+            this.auto.focusTimer = null;
+            if (currentRoute() !== "detail") return;
+            const active = document.activeElement;
+            if ((fresh || !active || active === document.body) && this.auto.playBtn && this.auto.playBtn.isConnected) {
+              this.auto.playBtn.focus({ preventScroll: true });
+            }
+          }, 350);
+        }
+      }
+    },
+
+    autoTick(list, items) {
+      if (!this.auto.requested) {
+        this.removeAutoNote();
+        return;
+      }
+      const key = this.autoKey();
+      if (!this.auto.key || key !== this.auto.key) {
+        this.autoReset();
+        this.auto.key = key;
+        this.auto.started = Date.now();
+        this.auto.lastChange = Date.now();
+      }
+      if (this.auto.manual) {
+        this.removeAutoNote();
+        return;
+      }
+      if (this.auto.picked) return;
+      if (!items.length) {
+        if (Date.now() - this.auto.started > 9000) this.autoNote("No se encontraron fuentes. Elige una fuente manualmente.", true);
+        else this.autoNote("Buscando fuentes en español de España…", false);
+        return;
+      }
+      const sig = items.map((el) => el.textContent.length).join(",");
+      if (sig !== this.auto.lastSig) {
+        this.auto.lastSig = sig;
+        this.auto.lastChange = Date.now();
+      }
+      const age = Date.now() - this.auto.lastChange;
+      const total = Date.now() - this.auto.started;
+      if (age < 1400 && total < 6500) {
+        this.autoNote("Buscando la mejor fuente en español de España…", true);
+        if (!this.auto.timer) this.auto.timer = setTimeout(() => { this.auto.timer = null; this.ensure(); }, 350);
+        return;
+      }
+      const cap = parseInt(settings.maxQuality, 10) || 2160;
+      const spanish = items
+        .map((el) => ({ el, d: this.data(el) }))
+        .filter((x) => x.d.source !== "CAM" && this.isSpanishSpain(x.d));
+      const ranked = spanish.filter((x) => !x.d.res || x.d.res <= cap);
+      if (!ranked.length) {
+        if (spanish.length) this.autoNote(`No hay fuentes en español de España hasta ${QUALITY_LABEL[cap] || cap + "p"}. Elige una fuente manualmente.`, true);
+        else this.autoNote("No hay fuentes en español de España. Elige una fuente manualmente.", true);
+        return;
+      }
+      ranked.sort((a, b) =>
+        (b.d.res - a.d.res) ||
+        ((b.d.dv ? 1 : 0) - (a.d.dv ? 1 : 0)) ||
+        ((b.d.hdr ? 1 : 0) - (a.d.hdr ? 1 : 0)) ||
+        ((SOURCE_RANK[b.d.source] || 0) - (SOURCE_RANK[a.d.source] || 0)) ||
+        ((b.d.instant ? 1 : 0) - (a.d.instant ? 1 : 0)) ||
+        (b.d.seeds - a.d.seeds));
+      const best = ranked[0];
+      this.auto.picked = true;
+      this.autoNote(`Fuente automática: ${best.d.provider} · ${QUALITY_LABEL[best.d.res] || "?"}${best.d.dv ? " · DV" : best.d.hdr ? " · HDR" : ""}`, true);
+      this.auto.commit = setTimeout(() => {
+        this.auto.commit = null;
+        if (!this.auto.picked || this.auto.manual) return;
+        this.auto.clicking = true;
+        try { best.el.click(); } catch (_) { /* fall through to the manual list */ }
+        setTimeout(() => {
+          this.auto.clicking = false;
+          if (currentRoute() === "detail") {
+            this.auto.picked = false;
+            this.autoNote("No se pudo abrir la fuente automáticamente. Elige una manualmente.", true);
+          }
+        }, 900);
+      }, 1000);
+    },
+
+    openManualList() {
+      this.autoManual();
+      const list = document.querySelector('[class*="metadetails-content"] [class*="streams-list-container"] > [class*="streams-container"]');
+      const first = list && list.querySelector(':scope > [class*="stream-container"]');
+      if (first) {
+        if (first.tabIndex < 0) first.tabIndex = 0;
+        const land = () => {
+          const el = document.querySelector('[class*="metadetails-content"] [class*="streams-list-container"] > [class*="streams-container"] > [class*="stream-container"]');
+          if (!el) return;
+          if (el.tabIndex < 0) el.tabIndex = 0;
+          el.focus({ preventScroll: true });
+          el.scrollIntoView({ block: "center" });
+        };
+        land();
+        setTimeout(land, 300);
+      }
+    },
+
+    autoManual(quiet) {
+      document.documentElement.classList.remove("dx-autohide");
+      this.auto.manual = true;
+      this.auto.picked = false;
+      clearTimeout(this.auto.timer);
+      clearTimeout(this.auto.commit);
+      clearTimeout(this.auto.focusTimer);
+      this.auto.timer = null;
+      this.auto.commit = null;
+      this.auto.focusTimer = null;
+      if (quiet) this.removeAutoNote();
+      else {
+        this.autoNote("Selección manual: elige una fuente de la lista.", false);
+        setTimeout(() => { if (this.auto.manual) this.removeAutoNote(); }, 1800);
+      }
     },
 
     reset(list) {
@@ -3734,6 +4010,7 @@
       if (f.instant && f.instant < total) html += `<button type="button" class="dx-sb-btn dx-sb-toggle${s.instant ? " is-on" : ""}" data-toggle="instant">⚡ Instant</button>`;
       if (f.hdr && f.hdr < total) html += `<button type="button" class="dx-sb-btn dx-sb-toggle${s.hdr ? " is-on" : ""}" data-toggle="hdr">HDR / DV</button>`;
       const filtered = active.quality.length || active.lang.length || active.source.length || active.provider.length || s.instant || s.hdr;
+      if (settings.autoPick) html += `<button type="button" class="dx-sb-btn" data-act="manual">Elegir fuente</button>`;
       html += `<span class="dx-sb-count">${shown === total ? `${total} streams` : `${shown} of ${total}`}</span>`;
       if (filtered || s.sort !== "default") html += `<button type="button" class="dx-sb-reset" data-act="reset">Reset</button>`;
       html += `</div>`;
@@ -3755,6 +4032,13 @@
       e.preventDefault();
       e.stopPropagation();
       const s = this.state;
+      if (t.dataset.act === "manual") {
+        this.autoManual();
+        this.open = null;
+        this.sig = "";
+        this.ensure();
+        return;
+      }
       if (t.dataset.menu) {
         this.open = this.open === t.dataset.menu ? null : t.dataset.menu;
         sfx.play("menu", 0.8);
@@ -3793,6 +4077,14 @@
 
   function onStreamDocClick(e) {
     const t = e.target instanceof Element ? e.target : null;
+    if (t && t.closest(".dx-auto-overlay [data-act='manual']")) {
+      streamTools.autoManual();
+      return;
+    }
+    if (t && !streamTools.auto.clicking && t.closest('[class*="stream-container"]')) {
+      // The viewer picked a source themselves: stop the automatic choice for this title.
+      streamTools.autoManual(true);
+    }
     const reset = t && t.closest(".dx-stream-empty [data-act='reset']");
     if (reset) streamTools.onClick({ target: reset, preventDefault() {}, stopPropagation() {} });
     else streamTools.closeMenu(e);
@@ -4348,7 +4640,7 @@
       this.mode = mode;
     },
 
-    // ---- The dx.bi app's mpv player: the same choices, run by mpv as user shaders ----
+    // ---- The CineFlow app's mpv player: the same choices, run by mpv as user shaders ----
     mpvMode: "off",
 
     ensureMpv() {
@@ -6615,14 +6907,643 @@
     setTimeout(() => {
       syncQueued = false;
       sync();
-    }, 90);
+    }, 40);
   }
 
+  // ---------------------------------------------------------------------------
+  // CineFlow: season/episode picker. Stremio's own videos panel is not reliable on the TV layout,
+  // so the picker reads the series' episode list from Cinemeta and navigates to the chosen episode.
+  // ---------------------------------------------------------------------------
+  const episodePicker = {
+    el: null, row: null, data: null, seriesId: "", season: 0, loading: false,
+
+    ensure() {
+      const m = /^#\/detail\/series\/(tt\d+)/.exec(location.hash || "");
+      if (!m) {
+        this.close();
+        if (this.row) this.row.remove();
+        this.row = null;
+        this.seriesId = "";
+        return;
+      }
+      const id = m[1];
+      if (id !== this.seriesId) {
+        this.seriesId = id;
+        this.data = null;
+        this.loading = false;
+      }
+      this.ensureButton();
+      if (this.el && !this.el.hidden) this.render();
+    },
+
+    ensureButton() {
+      const actions = document.querySelector('[class*="metadetails-content"] [class*="action-buttons-container"]');
+      if (!actions) return;
+      if (!this.row || !this.row.isConnected) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dx-cf-episodes-btn";
+        btn.textContent = "Episodios";
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.open();
+        });
+        btn.tabIndex = 0;
+        actions.appendChild(btn);
+        this.row = btn;
+        setTimeout(() => {
+          if (currentRoute() !== "detail") return;
+          if (!document.querySelector('.dx-cf-play') && document.activeElement === document.body && btn.isConnected) {
+            btn.focus({ preventScroll: true });
+          }
+        }, 450);
+      }
+    },
+
+    async open() {
+      if (!this.el) {
+        const box = document.createElement("div");
+        box.className = "dx-ep-overlay";
+        box.innerHTML = '<div class="dx-ep-modal"><div class="dx-ep-head"><b>Temporadas y episodios</b><button type="button" class="dx-ep-close">Cerrar</button></div><div class="dx-ep-seasons"></div><div class="dx-ep-list"></div></div>';
+        box.addEventListener("click", (e) => { if (e.target === box) this.close(); });
+        box.querySelector(".dx-ep-close").addEventListener("click", () => this.close());
+        document.body.append(box);
+        this.el = box;
+      }
+      this.el.hidden = false;
+      if (!this.data) await this.load();
+      this.render();
+    },
+
+    onKey(e) {
+      if (!this.el || this.el.hidden) return false;
+      const nav = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " ", "Escape", "Backspace"];
+      if (!nav.includes(e.key)) return false;
+      e.preventDefault();
+      e.stopPropagation();
+      const active = document.activeElement;
+      if (e.key === "Escape" || e.key === "Backspace") { this.close(); return true; }
+      if (e.key === "Enter" || e.key === " ") {
+        if (active && typeof active.click === "function") active.click();
+        return true;
+      }
+      const seasons = [...this.el.querySelectorAll(".dx-ep-season")];
+      const eps = [...this.el.querySelectorAll(".dx-ep-item")];
+      const close = this.el.querySelector(".dx-ep-close");
+      const focus = (el) => { if (el) el.focus({ preventScroll: true }); };
+      if (active === close) {
+        if (e.key === "ArrowDown") focus(seasons[0] || eps[0]);
+        return true;
+      }
+      if (seasons.includes(active)) {
+        const i = seasons.indexOf(active);
+        if (e.key === "ArrowLeft") focus(seasons[Math.max(0, i - 1)]);
+        else if (e.key === "ArrowRight") focus(seasons[Math.min(seasons.length - 1, i + 1)]);
+        else if (e.key === "ArrowDown") focus(eps[0] || close);
+        else if (e.key === "ArrowUp") focus(close);
+        return true;
+      }
+      if (eps.includes(active)) {
+        const i = eps.indexOf(active);
+        if (e.key === "ArrowLeft") focus(eps[Math.max(0, i - 1)]);
+        else if (e.key === "ArrowRight") focus(eps[Math.min(eps.length - 1, i + 1)]);
+        else if (e.key === "ArrowUp") focus(i >= 2 ? eps[i - 2] : (seasons.find((b) => b.classList.contains("is-on")) || seasons[0] || close));
+        else if (e.key === "ArrowDown") focus(i + 2 < eps.length ? eps[i + 2] : eps[eps.length - 1]);
+        return true;
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        focus(eps[0] || seasons[0] || close);
+      }
+      return true;
+    },
+
+    close() {
+      if (this.el) this.el.hidden = true;
+      if (this.row && this.row.isConnected) this.row.focus({ preventScroll: true });
+    },
+
+    async load() {
+      this.loading = true;
+      this.render();
+      try {
+        const r = await fetch(`https://v3-cinemeta.strem.io/meta/series/${this.seriesId}.json`, { signal: AbortSignal.timeout(9000) });
+        const j = r.ok ? await r.json() : null;
+        const videos = j && j.meta && Array.isArray(j.meta.videos) ? j.meta.videos : [];
+        this.data = videos.filter((v) => v && Number(v.season) >= 0).sort((a, b) => (a.season - b.season) || (a.episode - b.episode));
+      } catch (_) {
+        this.data = [];
+      }
+      this.loading = false;
+      this.render();
+    },
+
+    render() {
+      if (!this.el) return;
+      const seasonsBox = this.el.querySelector(".dx-ep-seasons");
+      const list = this.el.querySelector(".dx-ep-list");
+      if (!seasonsBox || !list) return;
+      if (this.loading) {
+        seasonsBox.textContent = "";
+        list.innerHTML = '<div class="dx-ep-empty">Cargando episodios…</div>';
+        return;
+      }
+      const videos = this.data || [];
+      const seasons = [...new Set(videos.map((v) => Number(v.season)).filter((n) => n >= 0))].sort((a, b) => a - b);
+      if (!seasons.length) {
+        seasonsBox.textContent = "";
+        list.innerHTML = '<div class="dx-ep-empty">No hay episodios disponibles.</div>';
+        return;
+      }
+      if (!seasons.includes(this.season)) {
+        const m = /(?:%3A|:)(\d+)(?:%3A|:)(\d+)/i.exec(location.hash || "");
+        this.season = m ? Number(m[1]) : seasons[0];
+        if (!seasons.includes(this.season)) this.season = seasons[0];
+      }
+      seasonsBox.innerHTML = "";
+      for (const n of seasons) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "dx-ep-season" + (n === this.season ? " is-on" : "");
+        b.textContent = n === 0 ? "Especiales" : `Temporada ${n}`;
+        b.addEventListener("click", () => { this.season = n; this.render(); });
+        seasonsBox.appendChild(b);
+      }
+      list.innerHTML = "";
+      const eps = videos.filter((v) => Number(v.season) === this.season);
+      for (const v of eps) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "dx-ep-item";
+        const title = String(v.name || v.title || `Episodio ${v.episode}`);
+        b.innerHTML = `<span class="dx-ep-num">E${String(v.episode).padStart(2, "0")}</span><span class="dx-ep-name"></span>`;
+        b.querySelector(".dx-ep-name").textContent = title;
+        b.addEventListener("click", () => {
+          this.close();
+          location.hash = `#/detail/series/${this.seriesId}/${encodeURIComponent(v.id)}`;
+        });
+        list.appendChild(b);
+      }
+      if (!eps.length) list.innerHTML = '<div class="dx-ep-empty">No hay episodios en esta temporada.</div>';
+      if (!this.el.hidden && !this.el.contains(document.activeElement)) {
+        const target = this.el.querySelector(".dx-ep-item") || this.el.querySelector(".dx-ep-season") || this.el.querySelector(".dx-ep-close");
+        setTimeout(() => {
+          if (this.el && !this.el.hidden && !this.el.contains(document.activeElement) && target) target.focus({ preventScroll: true });
+        }, 40);
+      }
+    },
+  };
+
+  // Stremio renders its episode panel on the series page, not on an individual episode page.
+  // Continue Watching opens the episode directly, so offer a small button that goes to the series
+  // page where the native panel (thumbnails, seasons, Prev/Next) already works.
+  const seriesEpisodesLink = {
+    el: null,
+    ensure() {
+      const m = /^#\/detail\/series\/(tt\d+)\/tt\d+(?:%3A|:)\d+(?:%3A|:)\d+/i.exec(location.hash || "");
+      const actions = document.querySelector('[class*="metadetails-content"] [class*="action-buttons-container"]');
+      const hasVideos = !!document.querySelector('[class*="videos-list-container"]');
+      if (!m || !actions || hasVideos) {
+        if (this.el) this.el.remove();
+        this.el = null;
+        return;
+      }
+      if (!this.el || !this.el.isConnected) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dx-cf-episodes-btn";
+        btn.textContent = "Episodios";
+        btn.tabIndex = 0;
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          location.hash = `#/detail/series/${m[1]}`;
+        });
+        actions.appendChild(btn);
+        this.el = btn;
+      }
+    },
+  };
+
+  // The episode page does not print "S1E3" anywhere: show the chosen season and episode above the
+  // Play/Episodes row so the viewer knows what will play before pressing Play.
+  const episodeBadge = {
+    el: null,
+    ensure() {
+      const m = /^#\/detail\/series\/tt\d+\/tt\d+(?:%3A|:)(\d+)(?:%3A|:)(\d+)/i.exec(location.hash || "");
+      const actions = document.querySelector('[class*="metadetails-content"] [class*="action-buttons-container"]');
+      if (!m || !actions) {
+        if (this.el) this.el.remove();
+        this.el = null;
+        return;
+      }
+      if (!this.el || !this.el.isConnected) {
+        const badge = document.createElement("div");
+        badge.className = "dx-cf-episode-badge";
+        actions.parentElement.insertBefore(badge, actions);
+        this.el = badge;
+      }
+      const text = `Temporada ${Number(m[1])} · Episodio ${Number(m[2])}`;
+      if (this.el.textContent !== text) this.el.textContent = text;
+    },
+  };
+
+  // Native Settings → Reproductor → Reproducción automática row. It lives with the Stremio player
+  // settings, not in the plugin's own settings page.
+  const qualitySetting = {
+    el: null,
+    ensure() {
+      if (!(location.hash || "").startsWith("#/settings")) return;
+      const label = [...document.querySelectorAll(".label-N_O2v")].find((e) => e.textContent.trim() === "Reproducción automática");
+      const category = label && label.closest(".category-GP0hI");
+      if (!category) return;
+      if (!this.el || !this.el.isConnected) {
+        const option = document.createElement("div");
+        option.className = "option-vFOAS dx-quality-option";
+        option.innerHTML = '<div class="heading-dYMDt"><div class="label-qI6Vh">Calidad máxima de streaming</div></div><div class="content-P2T0i"><div tabindex="0" title="Pulsa para cambiar la calidad máxima" class="button-teWrC button-container-zVLH6 dx-quality-toggle"><div class="text-RJAMZ"></div><span class="dx-quality-chevron">▾</span></div></div>';
+        option.querySelector(".dx-quality-toggle").addEventListener("click", () => this.toggle());
+        const first = category.querySelector(".option-vFOAS");
+        category.insertBefore(option, first || null);
+        this.el = option;
+      }
+      const value = String(settings.maxQuality) === "1080" ? "Máximo 1080p" : "4K (2160p)";
+      const text = this.el.querySelector(".text-RJAMZ");
+      if (text && text.textContent !== value) text.textContent = value;
+    },
+    toggle() {
+      const next = String(settings.maxQuality) === "1080" ? "2160" : "1080";
+      settings.maxQuality = next;
+      persistSettings();
+      try { Promise.resolve(API.saveSetting("maxQuality", next)).catch(() => {}); } catch (_) { /* offline */ }
+      if (this.el) {
+        const text = this.el.querySelector(".text-RJAMZ");
+        if (text) text.textContent = next === "1080" ? "Máximo 1080p" : "4K (2160p)";
+      }
+    },
+  };
+
+  // The Canales tab is a native screen: clone Stremio's own Settings tab so it inherits the exact
+  // nav styling and D-pad behaviour, then hand the press to the app.
+  const channelsNav = {
+    el: null,
+    ensure() {
+      if (!IN_TV || !window.__dxbiTv || typeof window.__dxbiTv.openChannels !== "function") return;
+      const calendarLink = document.querySelector('a[href="#/calendar"], [href="#/calendar"]') ||
+        [...document.querySelectorAll("nav a, nav [tabindex]")].find((e) => /^(calendar|calendario)$/i.test((e.textContent || "").trim()));
+      if (calendarLink) calendarLink.style.display = "none";
+      const settingsLink = document.querySelector('a[href="#/settings"]') ||
+        [...document.querySelectorAll("a, [tabindex]")].find((e) => /^(settings|configuración)$/i.test((e.textContent || "").trim()));
+      const addonsLink = document.querySelector('a[href="#/addons"]') ||
+        [...document.querySelectorAll("nav a, nav [tabindex]")].find((e) => /^(addons|complementos)$/i.test((e.textContent || "").trim()));
+      const anchor = calendarLink || addonsLink || settingsLink;
+      if (!anchor || !anchor.parentElement) return;
+      if (!this.el || !this.el.isConnected) {
+        const a = document.createElement("a");
+        a.href = "#";
+        a.className = anchor.className + " dx-channels-nav";
+        a.textContent = "Canales";
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try { window.__dxbiTv.openChannels(); } catch (_) { /* phone preview */ }
+        });
+        anchor.parentElement.insertBefore(a, anchor);
+        this.el = a;
+      } else {
+        const after = this.el.nextElementSibling;
+        // Guía sits between Canales and the old Calendar slot; do not move Canales past it.
+        const next = after && after.classList.contains("dx-guide-nav") ? after.nextElementSibling : after;
+        if (next !== anchor) anchor.parentElement.insertBefore(this.el, anchor);
+      }
+    },
+  };
+
+  const guideNav = {
+    el: null,
+    ensure() {
+      if (!IN_TV || !window.__dxbiTv || typeof window.__dxbiTv.openGuide !== "function") return;
+      const channels = document.querySelector(".dx-channels-nav");
+      if (!channels || !channels.parentElement) return;
+      if (!this.el || !this.el.isConnected) {
+        const a = document.createElement("a");
+        a.href = "#";
+        a.className = channels.className + " dx-guide-nav";
+        a.textContent = "Guía";
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try { window.__dxbiTv.openGuide(); } catch (_) { /* phone preview */ }
+        });
+        channels.after(a);
+        this.el = a;
+      } else if (channels.nextElementSibling !== this.el) {
+        channels.after(this.el);
+      }
+    },
+  };
+
+  // Quick access to the last native Canales channels, inside Home's Continue Watching live row.
+  // The row itself is Stremio's; the cards are replaced at its front because the live addon has no
+  // artwork or guide for these channels.
+  const recentChannelsRow = {
+    container: null,
+    signature: "",
+    focusIndex: null,
+    ensure() {
+      if (!IN_TV || !window.__dxbiTv || typeof window.__dxbiTv.recentChannels !== "function") return;
+      const heading = [...document.querySelectorAll('#app [class*="title-"]')]
+        .find((e) => e.children.length === 0 && /continuar viendo tv en directo/i.test((e.textContent || "").trim()));
+      const row = heading && heading.closest('[class*="board-row"]');
+      const container = row && row.querySelector('[class*="meta-items-container"]');
+      if (!container) return;
+      let items = [];
+      try { items = JSON.parse(window.__dxbiTv.recentChannels() || "[]"); } catch (_) { /* empty */ }
+      // The addon's own live cards have no artwork or guide and are broken placeholders; this row
+      // becomes the CineFlow recent-channels row instead of mixing two different card types.
+      container.querySelectorAll(':scope > [class*="meta-item-container"]:not(.dx-recent-card)').forEach((n) => { n.style.display = "none"; });
+      const signature = JSON.stringify(items);
+      if (this.container === container && this.container.isConnected && this.signature === signature) return;
+      const previousFocus = this.focusIndex;
+      this.container = container;
+      this.signature = signature;
+      container.querySelectorAll(".dx-recent-card").forEach((n) => n.remove());
+      const template = container.querySelector('[class*="meta-item-container"]');
+      const cardClass = template ? template.className : "meta-item-container";
+      const linkClass = (template && template.querySelector("a[tabindex]")?.className) || "meta-item-link button-container-zVLH6";
+      const frag = document.createDocumentFragment();
+      const makeCard = (name, now, group, open) => {
+        const card = document.createElement("div");
+        card.className = cardClass + " dx-recent-card" + (open ? " dx-recent-open" : "");
+        // Stremio's card class has its own gutter; the quick-access art must meet the card edge.
+        card.style.setProperty("padding", "0", "important");
+        card.style.setProperty("overflow", "hidden", "important");
+        card.innerHTML = `<a tabindex="0" href="#" class="${linkClass} dx-recent-link"><div class="dx-recent-art"><span>${open ? "›" : "TV"}</span></div><div class="dx-recent-body"><div class="dx-recent-name">${esc(name)}</div><div class="dx-recent-now">${esc(now)}</div><div class="dx-recent-group">${esc(group)}</div></div></a>`;
+        return card;
+      };
+      for (const item of items) {
+        const cleanName = String(item.name || "Canal")
+          .replace(/\s+-->\s+.*$/i, "")
+          .replace(/\s+[0-9a-f]{3,8}$/i, "")
+          .trim();
+        const card = makeCard(cleanName || "Canal", item.program || "Sin guía ahora", item.group || "Canales", false);
+        card.querySelector("a").addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try { window.__dxbiTv.playChannel(JSON.stringify({ url: item.url, name: item.name })); } catch (_) { /* app bridge absent */ }
+        });
+        frag.append(card);
+      }
+      const all = makeCard("Ver Canales", "Todos los canales", "CineFlow", true);
+      all.querySelector("a").addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try { window.__dxbiTv.openChannels(); } catch (_) { /* app bridge absent */ }
+      });
+      frag.append(all);
+      container.insertBefore(frag, container.firstChild);
+      // The live row is often scrolled sideways when it is redrawn, and its CSS scroll-snap
+      // immediately jumps back to the old card. Turn snap off on this row and show the start.
+      container.classList.add("dx-recent-host");
+      container.scrollLeft = 0;
+      requestAnimationFrame(() => { if (container.isConnected) container.scrollLeft = 0; });
+      if (previousFocus != null) {
+        requestAnimationFrame(() => {
+          const active = document.activeElement;
+          if (active && active.closest && active.closest(".dx-recent-card")) return;
+          const links = [...container.querySelectorAll(".dx-recent-card .dx-recent-link")];
+          links[Math.min(previousFocus, links.length - 1)]?.focus({ preventScroll: true });
+        });
+      }
+      if (!container.dataset.dxRecentKeys) {
+        container.dataset.dxRecentKeys = "1";
+        container.addEventListener("focusin", (e) => {
+          const card = e.target.closest && e.target.closest(".dx-recent-card");
+          if (!card) return;
+          this.focusIndex = [...container.querySelectorAll(".dx-recent-card")].indexOf(card);
+        });
+        document.addEventListener("focusin", (e) => {
+          if (!e.target.closest || !e.target.closest(".dx-recent-card")) this.focusIndex = null;
+        }, true);
+        container.addEventListener("keydown", (e) => {
+          const link = e.target.closest && e.target.closest(".dx-recent-link");
+          if (!link) return;
+          const links = [...container.querySelectorAll(".dx-recent-card .dx-recent-link")];
+          const at = links.indexOf(link);
+          if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+            const next = links[at + (e.key === "ArrowRight" ? 1 : -1)];
+            if (next) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              next.focus({ preventScroll: true });
+              next.scrollIntoView({ block: "nearest", inline: "center" });
+            }
+          } else if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            link.click();
+          }
+        }, true);
+      }
+    },
+  };
+
+  // Stremio's web login has no QR flow, but its core exposes the same link-code API the native
+  // Android TV app uses: create a code, show the QR, poll until the phone links it, then log in
+  // with the resulting auth key. Everything is labelled in Spanish so a fresh install is usable
+  // before any profile exists.
+  const qrLogin = {
+    button: null,
+    overlay: null,
+    timer: null,
+    poll: null,
+    code: null,
+    generation: 0,
+    autoShown: false,
+
+    ensure() {
+      const intro = document.querySelector('[class*="intro-container"]');
+      if (!intro) {
+        this.autoShown = false;
+        if (this.button) { this.button.remove(); this.button = null; }
+        if (this.overlay) this.close();
+        return;
+      }
+      this.translate(intro);
+      if (!this.button || !this.button.isConnected) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "dx-qr-login-btn";
+        button.textContent = "Entrar con QR";
+        button.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.open();
+        });
+        const content = intro.querySelector('[class*="content-container"]') || intro;
+        content.append(button);
+        this.button = button;
+      }
+      // On a TV the first thing a new install shows should be the QR, not a keyboard form.
+      if (!this.autoShown) {
+        this.autoShown = true;
+        setTimeout(() => { if (!this.overlay && document.querySelector('[class*="intro-container"]')) this.open(); }, 250);
+      }
+    },
+
+    translate(intro) {
+      const words = {
+        "Log In": "Iniciar sesión",
+        "Sign Up": "Crear cuenta",
+        "Sign up": "Crear cuenta",
+        "Log in": "Iniciar sesión",
+        "Email": "Correo electrónico",
+        "Password": "Contraseña",
+        "Confirm Password": "Confirmar contraseña",
+        "Forgot password?": "¿Has olvidado la contraseña?",
+        "Guest Login": "Entrar como invitado",
+        "Log in with Facebook": "Continuar con Facebook",
+        "Log in with Apple": "Continuar con Apple",
+        "Continue with Facebook": "Continuar con Facebook",
+        "Continue with Apple": "Continuar con Apple",
+        "Don't have an account?": "¿No tienes cuenta?",
+        "Already have an account?": "¿Ya tienes cuenta?",
+        "Create account": "Crear cuenta",
+        "Sign in": "Iniciar sesión",
+      };
+      const walk = document.createTreeWalker(intro, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walk.nextNode()) nodes.push(walk.currentNode);
+      for (const node of nodes) {
+        const key = (node.nodeValue || "").trim();
+        if (words[key]) node.nodeValue = (node.nodeValue || "").replace(key, words[key]);
+      }
+      intro.querySelectorAll("input[placeholder]").forEach((input) => {
+        const key = input.getAttribute("placeholder") || "";
+        if (words[key]) input.setAttribute("placeholder", words[key]);
+      });
+    },
+
+    async open() {
+      this.close(false);
+      const generation = ++this.generation;
+      const overlay = document.createElement("div");
+      overlay.className = "dx-qr-overlay";
+      overlay.innerHTML = `
+        <div class="dx-qr-card" role="dialog" aria-label="Iniciar sesión con QR">
+          <div class="dx-qr-brand">CINEFLOW</div>
+          <div class="dx-qr-title">Entrar con QR</div>
+          <div class="dx-qr-sub">Abre el enlace en tu móvil, inicia sesión en Stremio y esta TV entrará sola.</div>
+          <div class="dx-qr-frame"><img class="dx-qr-img" alt="Código QR de inicio de sesión"></div>
+          <div class="dx-qr-link"></div>
+          <div class="dx-qr-status">Generando código…</div>
+          <div class="dx-qr-actions">
+            <button type="button" class="dx-qr-new">Nuevo código</button>
+            <button type="button" class="dx-qr-close">Cancelar</button>
+          </div>
+        </div>`;
+      document.body.append(overlay);
+      this.overlay = overlay;
+      overlay.querySelector(".dx-qr-close").addEventListener("click", () => this.close());
+      overlay.querySelector(".dx-qr-new").addEventListener("click", () => this.start());
+      overlay.querySelector(".dx-qr-close").focus({ preventScroll: true });
+      await this.start();
+      if (generation !== this.generation) return;
+    },
+
+    async start() {
+      if (!this.overlay) return;
+      clearTimeout(this.timer);
+      clearInterval(this.poll);
+      const generation = ++this.generation;
+      const overlay = this.overlay;
+      const img = overlay.querySelector(".dx-qr-img");
+      const link = overlay.querySelector(".dx-qr-link");
+      const status = overlay.querySelector(".dx-qr-status");
+      const fresh = overlay.querySelector(".dx-qr-new");
+      fresh.disabled = true;
+      status.textContent = "Generando código…";
+      try {
+        const response = await fetch("https://link.stremio.com/api/v2/create?type=Create", { cache: "no-store" });
+        const payload = await response.json();
+        const result = payload && payload.result;
+        if (!result || !result.code) throw new Error("sin código");
+        this.code = result.code;
+        img.src = result.qrcode;
+        link.textContent = result.link || result.code;
+        status.textContent = "Escanea el QR o abre el enlace en el móvil";
+        fresh.disabled = false;
+        let tries = 0;
+        const poll = async () => {
+          if (generation !== this.generation || !this.overlay) return;
+          tries++;
+          try {
+            const read = await fetch("https://link.stremio.com/api/v2/read?type=Read&code=" + encodeURIComponent(result.code), { cache: "no-store" });
+            const data = await read.json();
+            const authKey = data && data.result && (data.result.authKey || data.result.auth_key);
+            if (authKey) {
+              this.authenticate(authKey);
+              return;
+            }
+          } catch (_) { /* keep trying */ }
+          // Before the phone completes the link, /read answers 101 (invalid/expired token); that
+          // is not a reason to throw the code away. Only a real timeout retires it.
+          if (tries > 150) {
+            status.textContent = "El código ha caducado. Genera uno nuevo.";
+            fresh.disabled = false;
+            return;
+          }
+          this.poll = setTimeout(poll, 2000);
+        };
+        this.poll = setTimeout(poll, 2000);
+      } catch (_) {
+        status.textContent = "No se pudo conectar con Stremio. Inténtalo de nuevo.";
+        fresh.disabled = false;
+      }
+    },
+
+    authenticate(authKey) {
+      clearTimeout(this.poll);
+      const status = this.overlay && this.overlay.querySelector(".dx-qr-status");
+      if (status) status.textContent = "Sesión vinculada. Entrando…";
+      const c = core();
+      try {
+        c.dispatch({
+          action: "Ctx",
+          args: { action: "Authenticate", args: { type: "LoginWithToken", token: authKey } },
+        });
+      } catch (_) { /* the login screen will show the error */ }
+      setTimeout(() => {
+        if (this.overlay) this.close();
+        if (document.querySelector(".intro-container")) location.hash = "#/";
+      }, 1200);
+    },
+
+    close(focus = true) {
+      clearTimeout(this.timer);
+      clearInterval(this.poll);
+      this.generation++;
+      this.code = null;
+      if (this.overlay) { this.overlay.remove(); this.overlay = null; }
+      if (focus && this.button) this.button.focus({ preventScroll: true });
+    },
+  };
+
   function sync() {
+    document.documentElement.classList.toggle("dx-perf", !!settings.performance);
+    document.documentElement.classList.toggle("dx-autohide", !!settings.autoPick && !streamTools.auto.manual);
     const steps = IN_TV
       ? [updateRoute, brandTitle, () => addonTools.ensure(), communitySync]
       : [updateRoute, brandTitle, () => player.ensure(), () => playerClock.ensure(), () => { convert.ensure().catch(() => { /* player state not ready */ }); }, () => convert.confirmHevc(), () => externalDefault.ensure(), () => placeholder.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => tune.ensure(), () => streamInfo.ensure(), () => addonTools.ensure(), communitySync];
-    if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
+    if (currentRoute() === "detail") {
+      steps.push(() => streamTools.ensure());
+      steps.push(() => seriesEpisodesLink.ensure());
+      steps.push(() => episodeBadge.ensure());
+    }
+    if ((location.hash || "").startsWith("#/settings")) steps.push(() => qualitySetting.ensure());
+    if (IN_TV) steps.push(() => channelsNav.ensure());
+    if (IN_TV) steps.push(() => guideNav.ensure());
+    if (currentRoute() === "board") steps.push(() => recentChannelsRow.ensure());
+    steps.push(() => qrLogin.ensure());
     steps.push(() => reviews.ensure(), () => hideButton.ensure(), () => { endsAt.ensure().catch(() => { /* next sync */ }); }, () => { calendarFill.ensure().catch(() => { /* next sync */ }); }, () => { restrict.guard().catch(() => { /* next sync */ }); });
     if (currentRoute() !== "player") {
       steps.push(() => hero.ensure(), filterRows, () => homeLayout.ensure(), () => myList.ensure(), updateAllArrows, syncCards, () => librarySort.ensure(), () => libraryWatched.ensure(), applyWatchedTitles);
@@ -6636,7 +7557,7 @@
   const mo = new MutationObserver((records) => {
     for (const r of records) {
       // Ignore changes we made ourselves
-      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dxe-airing, .dxe-upnext, .dxe-playhelp, .dxe-placeholder, .dxe-skip, .dxe-trailer, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast, .dxp-nav-btn, .dxp-player-btn, .dxt-panel, .dx-sub2, .dxl-tools, .dxe-theatre, .dx-scores, .dx-reviews-btn, .dx-hide-btn, .dxe-kids-block, .dxe-toast, .dx-ends, .dx-cal-item, .dxe-report")) continue;
+      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dxe-airing, .dxe-upnext, .dxe-playhelp, .dxe-placeholder, .dxe-skip, .dxe-trailer, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-auto-note, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast, .dxp-nav-btn, .dxp-player-btn, .dxt-panel, .dx-sub2, .dxl-tools, .dxe-theatre, .dx-scores, .dx-reviews-btn, .dx-hide-btn, .dxe-kids-block, .dxe-toast, .dx-ends, .dx-cal-item, .dxe-report")) continue;
       scheduleSync();
       // Library's watched filters hide titles in the same frame Stremio draws them (a whole sync
       // later, the wrong titles were on screen for a moment)
@@ -6651,7 +7572,7 @@
   };
   const onOver = (e) => preview.onOver(e);
   const onOut = (e) => preview.onOut(e);
-  const onHash = () => { document.body.classList.remove("dx-discover-picked"); updateRoute(); scheduleSync(); };
+  const onHash = () => { document.body.classList.remove("dx-discover-picked"); streamTools.autoReset(); episodePicker.close(); updateRoute(); scheduleSync(); };
 
   // Discover selects its first title by itself (for its side panel): it only shows as selected once
   // you've picked one
@@ -7152,7 +8073,7 @@
   // answer is yes, the streaming server passes HEVC through untouched, and 10-bit / Dolby Vision
   // releases then fail on PCs that can't decode them ("Video is not supported", common on Windows 10).
   // Stremio's player has a built-in fallback, ?forceTranscoding, which makes the server convert to
-  // H.264; Stremio only uses it for Chromecast. dx.bi uses it for those releases, and retries with it
+  // H.264; Stremio only uses it for Chromecast. CineFlow uses it for those releases, and retries with it
   // whenever a video fails.
   const HEVC_HINT = /\b(?:x\.?265|h\.?265|hevc|10[ -]?bit|dovi|dv|dolby[ .-]?vision|hdr(?:10\+?)?)\b/i;
   // Dolby Vision releases can fail where plain HEVC plays, so their failures say nothing about HEVC
@@ -7163,7 +8084,7 @@
   const HEVC_FAILED_KEY = "dxbi.hevcFailed2";
   const convert = {
     hevc: null, // can this PC decode 10-bit HEVC?
-    hevcBrowser: null, // what Chromium says, before what dx.bi learnt from failures
+    hevcBrowser: null, // what Chromium says, before what CineFlow learnt from failures
     retried: new Set(),
     guessed: new Map(), // player route → release text, for routes converted up front because it looked like 10-bit HEVC
     unconverted: new Set(), // player routes the viewer chose to play without converting
@@ -7216,7 +8137,7 @@
         this.unconverted.clear();
         return;
       }
-      // The dx.bi app's mpv player plays these formats itself: converting would only make them worse
+      // The CineFlow app's mpv player plays these formats itself: converting would only make them worse
       if (settings.convertVideo === "off" || this.active() || window.__dxbiNativePlayer) return;
       const key = location.hash;
       if (this.checkedFor === key || this.unconverted.has(key)) return;
@@ -7248,7 +8169,7 @@
       return true;
     },
 
-    // The player route as it was before dx.bi added conversion
+    // The player route as it was before CineFlow added conversion
     originalHash() {
       return location.hash.replace(/([?&])forceTranscoding=1(&|$)/, (m, before, after) => (after ? before : ""));
     },
@@ -7645,8 +8566,8 @@
       const chrome = (/Chrome\/([\d.]+)/.exec(ua) || [])[1];
       const hevc = convert.hevc === null ? "not checked" : convert.hevc ? "yes" : convert.hevcBrowser ? "no (played converted before)" : "no";
       return [
-        "dx.bi playback report",
-        `dx.bi ${PLUGIN_VERSION} · ${os}${r.platform ? ` (${r.platform})` : ""} · Chromium ${chrome || "?"}`,
+        "CineFlow playback report",
+        `CineFlow ${PLUGIN_VERSION} · ${os}${r.platform ? ` (${r.platform})` : ""} · Chromium ${chrome || "?"}`,
         `Streaming server ${r.server || "?"} · transcode profile: ${r.profile || "Disabled"} · hw accel: ${r.hwAccel}`,
         `Converted: ${convert.active()}${convert.wasGuess() ? " (up front, original not tried)" : ""} · 10-bit HEVC decoding: ${hevc}`,
         `File: ${r.format || "?"} · ${(r.streams || []).join(", ") || r.probe || "?"}`,
@@ -7687,7 +8608,7 @@
           } else if (why.kind === "dll") {
             text = IN_APP
               ? `<b>Windows can't start the streaming server's video tool (ffprobe): a file it needs is missing.</b> Restart ${APP_NAME}: when it starts, it checks the streaming server's ffmpeg and ffprobe and replaces copies that can't run, including the ones Stremio Service's Windows download comes with. If you've installed ffmpeg yourself (it's used first when it's on your PATH), remove or update it. Meanwhile, open this one in mpv or VLC.`
-              : `<b>Windows can't start the streaming server's video tool (ffprobe): a file it needs is missing.</b> If you use <i>Stremio Service</i>, its Windows download comes without the files its ffprobe needs: the dx.bi app repairs that by itself, or choose server.js when ${APP_NAME} starts instead. With server.js, close ${APP_NAME} and delete <i>ffmpeg.exe</i> and <i>ffprobe.exe</i> in <i>%APPDATA%\\stremio-enhanced\\streamingserver</i> so fresh copies are downloaded. If you've installed ffmpeg yourself (it's used first when it's on your PATH), remove or update it. Meanwhile, open this one in mpv or VLC.`;
+              : `<b>Windows can't start the streaming server's video tool (ffprobe): a file it needs is missing.</b> If you use <i>Stremio Service</i>, its Windows download comes without the files its ffprobe needs: the CineFlow app repairs that by itself, or choose server.js when ${APP_NAME} starts instead. With server.js, close ${APP_NAME} and delete <i>ffmpeg.exe</i> and <i>ffprobe.exe</i> in <i>%APPDATA%\\stremio-enhanced\\streamingserver</i> so fresh copies are downloaded. If you've installed ffmpeg yourself (it's used first when it's on your PATH), remove or update it. Meanwhile, open this one in mpv or VLC.`;
           } else if (why.kind === "source") {
             text = `<b>The streaming server couldn't open this link.</b> Converting means the streaming server reads the file itself, and this source didn't let it: some only answer browsers, and links can expire. ${convert.wasGuess() ? "Try it as it is, pick" : "Pick"} another release, or open this one in mpv or VLC.`;
           } else if (why.kind === "converter") {
@@ -7695,7 +8616,7 @@
           } else if (convert.wasGuess()) {
             // Converted before it was tried: the original may well play (Macs decode HEVC themselves)
             tryOriginal = true;
-            text = "<b>Converting this release didn't work.</b> dx.bi converted it before trying it, because it looked like 10-bit HEVC and this computer seemed unable to play that. Try it as it is, pick another release (x264/H.264 or WEB-DL are the safest), or open it in mpv or VLC.";
+            text = "<b>Converting this release didn't work.</b> CineFlow converted it before trying it, because it looked like 10-bit HEVC and this computer seemed unable to play that. Try it as it is, pick another release (x264/H.264 or WEB-DL are the safest), or open it in mpv or VLC.";
           } else {
             text = "<b>This release can't play here, even converted.</b> The file may be damaged or in an unusual format. Pick another release (x264/H.264 or WEB-DL are the safest), or open this one in mpv or VLC.";
           }
@@ -7935,7 +8856,7 @@
   // ---- Picture-in-picture (button lives in the player's control bar, see player.ensure)
 
   async function togglePip() {
-    if (window.__dxbiMpv) { window.__dxbiMpv.pip(); return; } // the dx.bi app's mpv player
+    if (window.__dxbiMpv) { window.__dxbiMpv.pip(); return; } // the CineFlow app's mpv player
     const video = document.querySelector('[class*="player-container"] video');
     if (miniPlayer.usable() && video && (await miniPlayer.start(video))) return;
     try {
@@ -7946,7 +8867,7 @@
     }
   }
 
-  // ---- The dx.bi app's picture-in-picture window (the app's core/MiniPlayer.ts). Stremio drops its
+  // ---- The CineFlow app's picture-in-picture window (the app's core/MiniPlayer.ts). Stremio drops its
   // player screen, and the video with it, as soon as you go anywhere else, so the browser's own PiP
   // closed as soon as you left the player. The app carries the stream on in a small always-on-top
   // window running its own Stremio player from the same second, and this window is free to browse.
@@ -8022,7 +8943,7 @@
       if (!this.info || root.querySelector(":scope > .dx-mini-ui")) return;
       const ui = document.createElement("div");
       ui.className = "dx-mini-ui";
-      ui.innerHTML = `<div class="dx-mini-top"><button class="dx-mini-btn is-expand" title="Back to dx.bi">${ICONS.expand}</button><button class="dx-mini-btn is-close" title="Close">${ICONS.close}</button></div>` +
+      ui.innerHTML = `<div class="dx-mini-top"><button class="dx-mini-btn is-expand" title="Back to CineFlow">${ICONS.expand}</button><button class="dx-mini-btn is-close" title="Close">${ICONS.close}</button></div>` +
         `<button class="dx-mini-btn is-play" title="Play / pause">${ICONS.pause}</button><div class="dx-mini-line"><i></i></div><div class="dx-mini-grip" title="Drag to resize"></div>`;
       const video = () => root.querySelector("video");
       const play = ui.querySelector(".is-play");
@@ -8083,7 +9004,7 @@
   // ---- Addon order & backup (Addons page)
 
   // Home rows come from catalog addons on your Stremio account, so a fresh install looks bare next
-  // to the screenshots. These are free, need no account or keys, and are what dx.bi's Home uses.
+  // to the screenshots. These are free, need no account or keys, and are what CineFlow's Home uses.
   const HOME_PACK = [
     // (The Movie Database addon is left out: its rows repeated Cinemeta's, and its server stopped
     // answering configured installs in October 2026)
@@ -8137,7 +9058,7 @@
             <button class="dxe-btn" data-act="export">Back up</button>
             <button class="dxe-btn" data-act="import">Restore…</button>
             ${this.lastBackup() ? '<button class="dxe-btn" data-act="undo">Undo last change</button>' : ""}
-            ${this.missingPack(profile.addons).length ? '<button class="dxe-btn" data-act="pack">Add dx.bi Home rows</button>' : ""}
+            ${this.missingPack(profile.addons).length ? '<button class="dxe-btn" data-act="pack">Add CineFlow Home rows</button>' : ""}
             <span class="dxe-spacer"></span>
             <button class="dxe-btn" data-act="close">Close</button>
             <button class="dxe-btn is-primary" data-act="save" disabled>Save order</button>
@@ -8293,10 +9214,10 @@
       }
       try { localStorage.setItem("dxbi.packOffered", "1"); } catch (_) { /* ignore */ }
       const list = missing.map((p) => `• ${p.name}: ${p.what}`).join("\n");
-      const choice = await launcher.showAlert("question", "Set up Home like dx.bi?", `Home's rows come from catalog addons on your Stremio account. Add these free ones (no accounts or keys needed)?\n\n${list}\n\nYou can remove them any time in Addons, or undo from Addons → Order & backup.`, ["Add them", "Not now"]);
+      const choice = await launcher.showAlert("question", "Set up Home like CineFlow?", `Home's rows come from catalog addons on your Stremio account. Add these free ones (no accounts or keys needed)?\n\n${list}\n\nYou can remove them any time in Addons, or undo from Addons → Order & backup.`, ["Add them", "Not now"]);
       if (choice !== 0) return;
       const added = await this.installPack();
-      if (!added) launcher.showAlert("info", "dx.bi", "Couldn't reach the catalog addons right now. You can add them later from Addons → Order & backup.", ["OK"]);
+      if (!added) launcher.showAlert("info", "CineFlow", "Couldn't reach the catalog addons right now. You can add them later from Addons → Order & backup.", ["OK"]);
     },
 
     // Replace the account's addon collection, keeping the previous one so it can be undone
@@ -8329,7 +9250,7 @@
     },
 
     exportFile() {
-      const data = { app: "dx.bi", type: "stremio-addons", exported: new Date().toISOString(), addons: this.original };
+      const data = { app: "CineFlow", type: "stremio-addons", exported: new Date().toISOString(), addons: this.original };
       const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
       const a = Object.assign(document.createElement("a"), { href: url, download: `stremio-addons-${new Date().toISOString().slice(0, 10)}.json` });
       document.body.append(a);
@@ -8358,7 +9279,7 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Saved data. dx.bi keeps its own data (viewers, watch stats, playback prefs) in a separate
+  // Saved data. CineFlow keeps its own data (viewers, watch stats, playback prefs) in a separate
   // file next to its settings (dxbi-data.plugin.json), so it survives Stremio clearing its
   // storage. localStorage holds a copy for instant reads; the newer copy of each section wins.
   // ---------------------------------------------------------------------------
@@ -8506,7 +9427,7 @@
   };
 
   // ---------------------------------------------------------------------------
-  // A library for each viewer. The Stremio account has one library, so dx.bi remembers who added
+  // A library for each viewer. The Stremio account has one library, so CineFlow remembers who added
   // or played each title ("libraryOwners": id → viewer ids) and filters what Stremio's core hands
   // its UI (Library, Continue Watching, title pages, Calendar, notifications, "in library" marks).
   // Titles nobody claimed (everything from before, or added on another device) belong to the
@@ -8727,7 +9648,7 @@
     managing: false,
     confirming: null,
 
-    // Once per app start, after the intro, when more than one person uses this dx.bi
+    // Once per app start, after the intro, when more than one person uses this CineFlow
     async maybeShow() {
       await store.ready;
       if (!settings.whoIsWatching || viewers.list().list.length < 2 || currentRoute() === "player") return;
@@ -8961,7 +9882,7 @@
   }
 
   // Age ratings by title: Wikidata (films' MPA, BBFC, FSK and ClassInd certificates), Kitsu for
-  // anime, and TMDB (with your key, from dx.bi settings) for series, which Wikidata rarely has.
+  // anime, and TMDB (with your key, from CineFlow settings) for series, which Wikidata rarely has.
   // Asked for in batches, kept for a month.
   const ages = {
     mem: new Map(), // "type:id" → age | null
@@ -9341,13 +10262,13 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Report a problem: what dx.bi knows about this setup (version, device, settings, addons, library
-  // counts, what each part is doing, recent errors) sent to dx.bi's developer in one press, with a
+  // Report a problem: what CineFlow knows about this setup (version, device, settings, addons, library
+  // counts, what each part is doing, recent errors) sent to CineFlow's developer in one press, with a
   // short code to mention in Discord. Never sent on its own. Links are cut to the site's name (debrid
   // and addon links can carry keys), e-mail addresses removed, and keys only say whether they're set.
   // ---------------------------------------------------------------------------
 
-  // Reports go to dx.bi's relay (tools/report-relay, a Cloudflare Worker), which checks them and posts
+  // Reports go to CineFlow's relay (tools/report-relay, a Cloudflare Worker), which checks them and posts
   // them to a private Discord channel. The channel's webhook is the relay's secret, not in this code.
   const REPORT_ENDPOINT = "https://dxbi-reports.dxbialt.workers.dev/report";
 
@@ -9365,8 +10286,8 @@
     sentAt: 0,
 
     where() {
-      if (IN_TV) return "dx.bi TV";
-      if (IN_APP) return "dx.bi app";
+      if (IN_TV) return "CineFlow TV";
+      if (IN_APP) return "CineFlow app";
       return "Stremio Enhanced plugin";
     },
 
@@ -9464,7 +10385,7 @@
           };
         });
       }
-      // dx.bi TV adds the device, its WebView and the torrent engine
+      // CineFlow TV adds the device, its WebView and the torrent engine
       if (window.__dxbiTv && typeof window.__dxbiTv.deviceInfo === "function") await safe("tv", () => window.__dxbiTv.deviceInfo());
       await safe("memory", () => (performance.memory ? { usedMB: Math.round(performance.memory.usedJSHeapSize / 1048576), limitMB: Math.round(performance.memory.jsHeapSizeLimit / 1048576) } : null));
       out.recentErrors = recent.errors.map(redact);
@@ -9488,7 +10409,7 @@
       return data.code;
     },
 
-    // The desktop dialog (dx.bi TV draws its own, made for the remote)
+    // The desktop dialog (CineFlow TV draws its own, made for the remote)
     open() {
       // TV: its own dialog, made for the remote
       if (window.__dxbiTv && window.__dxbiTv.reportProblem) return window.__dxbiTv.reportProblem();
@@ -9499,7 +10420,7 @@
       for (const type of ["keydown", "keyup", "keypress"]) el.addEventListener(type, (e) => e.stopPropagation());
       el.innerHTML = `<div class="dxe-report-card" role="dialog" aria-label="Report a problem">
         <h2>Report a problem</h2>
-        <p>Say what went wrong and what you were doing. dx.bi adds the details that help fix it: its version, your device, your settings, addon names, how many titles are in your library, and recent errors. No e-mail, passwords, keys or stream links are sent.</p>
+        <p>Say what went wrong and what you were doing. CineFlow adds the details that help fix it: its version, your device, your settings, addon names, how many titles are in your library, and recent errors. No e-mail, passwords, keys or stream links are sent.</p>
         <textarea rows="5" maxlength="1500" placeholder="e.g. The calendar is empty, even though my library has shows that are airing"></textarea>
         <div class="dxe-report-btns"><span class="dxe-report-status"></span><button class="dxe-btn" data-cancel>Cancel</button><button class="dxe-btn is-primary" data-send>Send report</button></div>
       </div>`;
@@ -9512,7 +10433,7 @@
         status.textContent = "Sending…";
         try {
           const code = await this.send(el.querySelector("textarea").value);
-          el.querySelector(".dxe-report-card").innerHTML = `<h2>Report sent</h2><p>Thanks! Your report code is <b class="dxe-report-code">${esc(code)}</b>. Post it in dx.bi's Discord (#bug-reports) so it can be matched to you.</p><div class="dxe-report-btns"><button class="dxe-btn is-primary" data-close>Done</button></div>`;
+          el.querySelector(".dxe-report-card").innerHTML = `<h2>Report sent</h2><p>Thanks! Your report code is <b class="dxe-report-code">${esc(code)}</b>. Post it in CineFlow's Discord (#bug-reports) so it can be matched to you.</p><div class="dxe-report-btns"><button class="dxe-btn is-primary" data-close>Done</button></div>`;
         } catch (err) {
           status.textContent = err.message;
           send.disabled = false;
@@ -9765,7 +10686,7 @@
 
       return `
         <div class="dxe-head">
-          <b>Your stats<small>${esc(viewer.name)} · counted by dx.bi since ${esc(since)} · ${hoursText(total)} in total</small></b>
+          <b>Your stats<small>${esc(viewer.name)} · counted by CineFlow since ${esc(since)} · ${hoursText(total)} in total</small></b>
           ${viewers.list().list.length > 1 ? '<button class="dxe-btn" data-act="who">Switch viewer</button>' : ""}
           <button class="dxe-btn" data-act="close">Close</button>
         </div>
@@ -9789,7 +10710,7 @@
               </div>
             </div>
           </div>
-          <p class="dxe-note">Stats stay on this PC (saved with dx.bi's data, per viewer). Only time spent actually playing counts.</p>
+          <p class="dxe-note">Stats stay on this PC (saved with CineFlow's data, per viewer). Only time spent actually playing counts.</p>
         </div>`;
     },
   };
@@ -9808,7 +10729,7 @@
         item.tabIndex = 0; // a remote can only stop on what takes focus
         item.innerHTML = `${icon}<div class="${(template.querySelector('[class*="nav-menu-option-label"]') || {}).className || ""}">${label}</div>`;
         // Stremio's own icon class, for the same size and the same gap before the label (without it
-        // dx.bi's entries sat hard against their icons). Ours are outlines: kept unfilled.
+        // CineFlow's entries sat hard against their icons). Ours are outlines: kept unfilled.
         const theirs = template.querySelector("svg");
         const ours = item.querySelector("svg");
         if (theirs && ours) {
@@ -10037,7 +10958,7 @@
           <div class="dxe-head"><b>Keyboard shortcuts<small>Press ? any time to open this list</small></b><button class="dxe-btn" data-act="close">Close</button></div>
           <div class="dxe-keys">${SHORTCUTS.map(([group, rows]) => `
             <div class="dxe-section"><div class="dxe-label">${esc(group)}</div>
-              ${rows.map(([k, label, dx]) => `<div class="dxe-key"><span>${esc(label)}${dx ? '<em>dx.bi</em>' : ""}</span><kbd>${esc(k)}</kbd></div>`).join("")}
+              ${rows.map(([k, label, dx]) => `<div class="dxe-key"><span>${esc(label)}${dx ? '<em>CineFlow</em>' : ""}</span><kbd>${esc(k)}</kbd></div>`).join("")}
             </div>`).join("")}
           </div>
         </div>`;
@@ -10233,7 +11154,7 @@
 
   // Stremio's Calendar only gets episodes from Cinemeta, which knows shows by their IMDb id: shows
   // in your library under another id (from the TMDB addon's rows, Kitsu's anime…) never appeared, and
-  // a library full of them left the Calendar empty. dx.bi puts their episodes in the month too.
+  // a library full of them left the Calendar empty. CineFlow puts their episodes in the month too.
   const calendarFill = {
     month: "",
 
@@ -10977,7 +11898,7 @@
 
 
   // ---------------------------------------------------------------------------
-  // Trailer theatre: a hover card's trailer full screen, with dx.bi's own controls
+  // Trailer theatre: a hover card's trailer full screen, with CineFlow's own controls
   // ---------------------------------------------------------------------------
 
   const theatre = {
@@ -11584,7 +12505,7 @@
 
   // Where the picture is inside the player: `frame` is the whole video frame (it reaches past the
   // edges when zoomed or cropped), `visible` the part you can see. Follows Stremio's own
-  // Fit / Crop / Stretch button (object-fit) and dx.bi's zoom (object-view-box).
+  // Fit / Crop / Stretch button (object-fit) and CineFlow's zoom (object-view-box).
   function pictureBox(v) {
     const box = v.getBoundingClientRect();
     const host = v.parentElement.getBoundingClientRect();
@@ -11682,7 +12603,7 @@
       sub2.place();
     },
 
-    // The dx.bi app's mpv player: zoom with video-zoom, black bars with video-crop (source pixels)
+    // The CineFlow app's mpv player: zoom with video-zoom, black bars with video-crop (source pixels)
     applyMpv() {
       const mpv = window.__dxbiMpv;
       const z = parseFloat(this.mode);
@@ -11807,7 +12728,7 @@
       if (!video) return;
       const mode = settings.pictureSound ? tune.prefs().audio : "normal";
       if (window.__dxbiMpv) {
-        // The dx.bi app's mpv player: the same sound modes as mpv audio filters
+        // The CineFlow app's mpv player: the same sound modes as mpv audio filters
         if (this.mpvMode === mode) return;
         this.mpvMode = mode;
         window.__dxbiMpv.set("af", MPV_SOUND[mode] || "");
@@ -12886,7 +13807,7 @@
       const key = `${p.order}|${p.genre}|${ids.join(",")}|${this.info.size}`;
       if (key === this.key) return;
       this.key = key;
-      // fetch what we don't know yet (from the cache dx.bi already keeps for ratings)
+      // fetch what we don't know yet (from the cache CineFlow already keeps for ratings)
       const missing = ids.filter((k) => k && !this.info.has(k));
       if (missing.length) {
         for (const k of missing) this.info.set(k, null);
@@ -13074,12 +13995,12 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Sharper selectors (dx.bi TV). Stremio's class names carry a build hash ("meta-row-xtlB1"), so the
+  // Sharper selectors (CineFlow TV). Stremio's class names carry a build hash ("meta-row-xtlB1"), so the
   // theme names them by what they contain ([class*="meta-row"]). A browser can't sort such rules by
   // class: for every element it checks each of them, walking up the whole page doing text matching,
   // and on a TV stick that made a full restyle take about a second (a freeze on every row change).
   // Here each of those parts becomes the real class names Stremio's own stylesheet uses, once; the
-  // result is kept for the next start, for as long as Stremio's build and dx.bi's styles stay the same.
+  // result is kept for the next start, for as long as Stremio's build and CineFlow's styles stay the same.
   // ---------------------------------------------------------------------------
 
   const sharpen = {
@@ -13093,7 +14014,7 @@
       return [...document.styleSheets].find((s) => s.href && /\/styles\/main\.css/.test(s.href));
     },
 
-    // Fill a dx.bi style element: sharpened from an earlier start when there's a copy for this exact
+    // Fill a CineFlow style element: sharpened from an earlier start when there's a copy for this exact
     // text and Stremio build, otherwise as it is (and sharpened shortly)
     fill(el, css) {
       if (IN_TV) {
@@ -13153,7 +14074,7 @@
       }
     },
 
-    // Every class name Stremio's stylesheet, dx.bi's styles and the page use
+    // Every class name Stremio's stylesheet, CineFlow's styles and the page use
     known() {
       if (this.classes) return this.classes;
       const set = new Set();
@@ -13270,8 +14191,8 @@
     return out;
   }
 
-  // The theme ships inside the plugin, so installing dx.bi alone gives the whole look. It's used only
-  // while no theme is applied (Enhanced's "Default"): applying the dx.bi theme file, or any other
+  // The theme ships inside the plugin, so installing CineFlow alone gives the whole look. It's used only
+  // while no theme is applied (Enhanced's "Default"): applying the CineFlow theme file, or any other
   // theme, takes over from it.
   const builtInTheme = {
     el: null,
@@ -13294,7 +14215,7 @@
         this.el.id = "dx-builtin-theme";
         sharpen.fill(this.el, bundledThemeCss());
       }
-      // Sit where a theme link would, ahead of dx.bi's own extra styles
+      // Sit where a theme link would, ahead of CineFlow's own extra styles
       const first = document.head.querySelector('style[id^="dx-"]:not(#dx-builtin-theme)');
       if (this.el.parentNode !== document.head || (first && this.el.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_PRECEDING)) {
         document.head.insertBefore(this.el, first || null);
@@ -13309,11 +14230,144 @@
   }
 
   function start() {
+    // CineFlow: the performance pass and the auto-pick banner. Kept out of the theme so the
+    // upstream theme can be replaced without losing them.
+    const cineCss = document.createElement("style");
+    cineCss.id = "dx-cineflow-style";
+    cineCss.textContent = `
+      .dx-auto-overlay {
+        position: fixed; z-index: 2147483600; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        display: flex; align-items: center; gap: .85rem; max-width: min(34rem, 86vw);
+        padding: 1rem 1.25rem; border: 1px solid rgba(255,255,255,.14); border-radius: .8rem;
+        background: rgba(12,12,14,.94); color: #fff; box-shadow: 0 20px 70px rgba(0,0,0,.6);
+        font: 600 .95rem/1.35 Inter, system-ui, sans-serif;
+      }
+      .dx-auto-overlay::before {
+        content: ""; flex: none; width: 1.1rem; height: 1.1rem; border-radius: 50%;
+        border: 2px solid rgba(255,255,255,.22); border-top-color: #e50914;
+        animation: dx-auto-spin .8s linear infinite;
+      }
+      .dx-auto-overlay span { flex: 1; min-width: 0; }
+      .dx-auto-overlay button {
+        flex: none; height: 2rem; padding: 0 .85rem; border: 0; border-radius: .45rem;
+        background: #fff; color: #000; font: 700 .8rem Inter, system-ui, sans-serif; cursor: pointer;
+      }
+      .dx-auto-overlay button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+      .dx-auto-overlay.is-error::before {
+        content: "!"; animation: none; display: flex; align-items: center; justify-content: center;
+        border: 1px solid #e50914; background: rgba(229,9,20,.22); color: #fff;
+        font: 800 .8rem Inter, system-ui, sans-serif;
+      }
+      .dx-auto-overlay button[hidden] { display: none; }
+      .dx-cf-playrow { display: flex; justify-content: center; width: 100%; margin: 0 0 .45rem; }
+      .dx-cf-episodes-row { display: flex; justify-content: center; width: 100%; margin: 0 0 .35rem; }
+      .dx-cf-episodes-btn, .dx-cf-provider { box-sizing: border-box; height: 2.625rem; padding: 0 1.3rem; border: 1px solid rgba(255,255,255,.28); border-radius: 8px; background: rgba(255,255,255,.08); color: #fff; font: 700 .875rem Inter, system-ui, sans-serif; cursor: pointer; flex: none; align-self: center; }
+      .dx-cf-episodes-btn:focus-visible, .dx-cf-episodes-btn:focus,
+      .dx-cf-provider:focus-visible, .dx-cf-provider:focus,
+      .dx-ep-season:focus-visible, .dx-ep-season:focus,
+      .dx-ep-item:focus-visible, .dx-ep-item:focus,
+      .dx-ep-close:focus-visible, .dx-ep-close:focus {
+        outline: 3px solid #fff !important; outline-offset: 3px; z-index: 1;
+      }
+      .dx-ep-item:focus, .dx-ep-season:focus { background: rgba(255,255,255,.16); }
+      .dx-ep-overlay { position: fixed; inset: 0; z-index: 2147483500; display: flex; align-items: center; justify-content: center; padding: 4vh 4vw; background: rgba(0,0,0,.78); }
+      .dx-ep-overlay[hidden] { display: none !important; }
+      .dx-ep-modal { width: min(68rem, 90vw); max-height: 86vh; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.14); border-radius: 1rem; background: #111114; box-shadow: 0 30px 100px rgba(0,0,0,.7); overflow: hidden; }
+      .dx-ep-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.3rem; border-bottom: 1px solid rgba(255,255,255,.1); color: #fff; font: 800 1.25rem Inter, system-ui, sans-serif; }
+      .dx-ep-close { height: 2.2rem; padding: 0 .9rem; border: 0; border-radius: .5rem; background: rgba(255,255,255,.12); color: #fff; font: 700 .8rem Inter, system-ui, sans-serif; cursor: pointer; }
+      .dx-ep-seasons { display: flex; gap: .5rem; padding: 1rem 1.3rem .4rem; overflow-x: auto; }
+      .dx-ep-season { flex: none; height: 2.35rem; padding: 0 1rem; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: transparent; color: #bbb; font: 700 .82rem Inter, system-ui, sans-serif; cursor: pointer; }
+      .dx-ep-season.is-on { background: #fff; border-color: #fff; color: #000; }
+      .dx-ep-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .45rem; padding: 1rem 1.3rem 1.4rem; overflow: auto; }
+      .dx-ep-item { display: flex; align-items: center; gap: .8rem; min-height: 3.2rem; padding: .45rem .7rem; border: 1px solid rgba(255,255,255,.09); border-radius: .55rem; background: rgba(255,255,255,.045); color: #fff; text-align: left; cursor: pointer; }
+      .dx-ep-num { flex: none; color: #e50914; font: 800 .8rem Inter, system-ui, sans-serif; }
+      .dx-ep-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 .9rem Inter, system-ui, sans-serif; }
+      .dx-ep-empty { grid-column: 1 / -1; padding: 2rem; color: #aaa; text-align: center; }
+      .dx-channels-nav { display: inline-flex; align-items: center; gap: .42rem; }
+      .dx-tv #app nav a[href="#/calendar"] { display: none !important; }
+      .dx-channels-nav::before { content: ""; width: .4rem; height: .4rem; border-radius: 999px; background: #e50914; box-shadow: 0 0 8px rgba(229,9,20,.7); flex: none; }
+      .dx-qr-login-btn { position: fixed; z-index: 20; top: 1.25rem; right: 1.25rem; display: inline-flex; align-items: center; height: 2.6rem; padding: 0 1.2rem; border: 1px solid rgba(255,255,255,.35); border-radius: .55rem; background: rgba(20,20,22,.88); color: #fff; font: 700 .9rem Inter, system-ui, sans-serif; cursor: pointer; }
+      .dx-qr-login-btn:hover, .dx-qr-login-btn:focus-visible { background: #fff; color: #111; border-color: #fff; outline: none; }
+      .dx-qr-overlay { position: fixed; inset: 0; z-index: 2147483001; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.82); backdrop-filter: blur(8px); color: #fff; font-family: Inter, system-ui, sans-serif; }
+      .dx-qr-card { width: min(30rem, calc(100vw - 2rem)); padding: 1.5rem 1.7rem 1.2rem; border: 1px solid rgba(255,255,255,.14); border-radius: 1rem; background: #151517; box-shadow: 0 30px 80px rgba(0,0,0,.65); text-align: center; }
+      .dx-qr-brand { color: #e50914; font-size: .72rem; font-weight: 800; letter-spacing: .18em; }
+      .dx-qr-title { margin-top: .35rem; font-size: 1.55rem; font-weight: 800; }
+      .dx-qr-sub { margin: .4rem auto 1rem; max-width: 24rem; color: #a3a3aa; font-size: .78rem; line-height: 1.45; }
+      .dx-qr-frame { display: inline-flex; padding: .65rem; border-radius: .6rem; background: #fff; }
+      .dx-qr-img { width: 13rem; height: 13rem; object-fit: contain; }
+      .dx-qr-link { margin-top: .7rem; color: #d6d6dc; font-size: .78rem; word-break: break-all; }
+      .dx-qr-status { min-height: 1.2rem; margin-top: .55rem; color: #a7dab8; font-size: .8rem; }
+      .dx-qr-actions { display: flex; justify-content: center; gap: .5rem; margin-top: .8rem; }
+      .dx-qr-actions button { padding: .55rem 1rem; border: 1px solid rgba(255,255,255,.2); border-radius: .45rem; background: rgba(255,255,255,.08); color: #fff; font: 700 .8rem Inter, system-ui, sans-serif; cursor: pointer; }
+      .dx-qr-actions button:focus-visible, .dx-qr-actions button:hover { background: #fff; color: #111; outline: none; }
+      .dx-qr-actions button:disabled { opacity: .45; }
+      .dx-recent-host { scroll-snap-type: none !important; }
+      .dx-recent-card { position: relative !important; overflow: hidden !important; padding: 0 !important; border-radius: 10px; background: #17171b; }
+      .dx-recent-card { z-index: 1; }
+      .dx-recent-card:focus-within { outline: 3px solid #fff !important; outline-offset: -3px !important; z-index: 6 !important; }
+      .dx-recent-card:focus-within::after { content: ""; position: absolute; inset: 0; z-index: 20; border: 3px solid #fff; border-radius: 10px; pointer-events: none; }
+      [class*="meta-items-container"]:has(> .dx-recent-card) > [class*="meta-item-container"]:not(.dx-recent-card) { display: none !important; }
+      #app .dx-recent-card .dx-recent-link { position: relative !important; display: block !important; width: 100% !important; height: 100% !important; color: #fff; text-decoration: none; border-radius: 10px; overflow: hidden; }
+      #app .dx-recent-card .dx-recent-art { position: absolute !important; inset: 0 0 auto 0 !important; width: 100% !important; height: 58% !important; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 75% 25%, rgba(229,9,20,.38), transparent 55%), linear-gradient(135deg, #24242a, #111114); }
+      #app .dx-recent-card .dx-recent-body { position: absolute !important; inset: 58% 0 0 0 !important; width: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; }
+      .dx-recent-art span { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 1.8rem; border: 1px solid rgba(255,255,255,.35); border-radius: .35rem; color: #fff; font: 800 .9rem Inter, system-ui, sans-serif; }
+      .dx-recent-body { flex: none; padding: .48rem .62rem .52rem; }
+      .dx-recent-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 .82rem Inter, system-ui, sans-serif; }
+      .dx-recent-now { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: .14rem; color: #a7dab8; font: 600 .72rem Inter, system-ui, sans-serif; }
+      .dx-recent-group { margin-top: .12rem; color: #8e8e98; font: 700 .62rem Inter, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+      .dx-recent-open .dx-recent-art span { width: 2rem; font-size: 1.7rem; border: 0; color: #fff; }
+      .dx-recent-card:focus-visible { outline: 3px solid #fff !important; outline-offset: 3px; }
+      .dx-cw-overlay { position: fixed; inset: 0; z-index: 2147483600; display: flex; align-items: center; justify-content: center; padding: 4vh 4vw; background: rgba(0,0,0,.78); }
+      .dx-cw-panel { width: min(48rem, 92vw); max-height: 82vh; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.14); border-radius: 1rem; background: #111114; box-shadow: 0 30px 100px rgba(0,0,0,.7); overflow: hidden; }
+      .dx-cw-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.3rem; border-bottom: 1px solid rgba(255,255,255,.1); color: #fff; font: 800 1.25rem Inter, system-ui, sans-serif; }
+      .dx-cw-close { height: 2.2rem; padding: 0 .9rem; border: 0; border-radius: .5rem; background: rgba(255,255,255,.12); color: #fff; font: 700 .8rem Inter, system-ui, sans-serif; cursor: pointer; }
+      .dx-cw-list { display: flex; flex-direction: column; gap: .45rem; padding: 1rem 1.3rem 1.3rem; overflow: auto; }
+      .dx-cw-item { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.4rem; padding: .6rem .8rem; border: 1px solid rgba(255,255,255,.1); border-radius: .6rem; background: rgba(255,255,255,.045); color: #fff; text-align: left; font: 600 .95rem Inter, system-ui, sans-serif; cursor: pointer; }
+      .dx-cw-item b { flex: none; color: #e50914; font-size: .82rem; }
+      .dx-cw-item:focus, .dx-cw-item:focus-visible { outline: 3px solid #fff !important; outline-offset: 2px; background: rgba(255,255,255,.14); }
+      .dx-cw-empty { padding: 2rem; color: #aaa; text-align: center; }
+      /* The detail metadata is taller than Stremio's fixed preview in some languages/titles: do not
+         clip the director chip or its label at the bottom edge. */
+      html.dx-tv #app [class*="metadetails-content"] [class*="meta-preview-container"] { overflow: visible !important; padding-bottom: .6rem !important; }
+      /* Keep Play / Proveedor / Episodios off the TV's bottom edge. The row is anchored by
+         Stremio's flex layout; lift it visually without changing the page's scroll geometry. */
+      html.dx-tv #app [class*="metadetails-content"] [class*="action-buttons-container"] { transform: translateY(-2.5rem) !important; }
+      html.dx-tv #app [class*="metadetails-content"] [class*="links-container"] { height: auto !important; overflow: visible !important; padding-bottom: .3rem !important; }
+      html.dx-tv #app [class*="metadetails-content"] [class*="link-container"] { height: auto !important; min-height: 2rem; line-height: 1.35 !important; padding-top: .3rem !important; padding-bottom: .3rem !important; }
+      .dx-cf-episode-badge {
+        display: inline-flex; align-items: center; width: fit-content;
+        margin: 0 0 .65rem; padding: .38rem .75rem; border-radius: 999px;
+        background: rgba(229,9,20,.14); border: 1px solid rgba(229,9,20,.45);
+        color: #fff; font: 700 .78rem Inter, system-ui, sans-serif; letter-spacing: .02em;
+      }
+      .dx-cf-play {
+        display: inline-flex; align-items: center; gap: .5rem; box-sizing: border-box; height: 2.625rem; padding: 0 1.3rem 0 1rem;
+        margin-right: .35rem; border: 0; border-radius: 8px; background: #fff; color: #000;
+        font: 800 .875rem Inter, system-ui, sans-serif; cursor: pointer; flex: none; align-self: center;
+      }
+      .dx-cf-play svg { width: .95rem; height: .95rem; fill: currentColor; }
+      .dx-cf-play:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+      @keyframes dx-auto-spin { to { transform: rotate(360deg); } }
+      html.dx-autohide [class*="streams-list-container"] { visibility: hidden !important; pointer-events: none !important; }
+      html.dx-autohide .dx-streambar { display: none !important; }
+      html.dx-perf #app [class*="metadetails-content"] [class*="action-buttons-container"] > *:not(.dx-cf-play):not(.dx-cf-trailer):not(.dx-cf-episodes-btn):not(.dx-cf-provider) { display: none !important; }
+      #app nav[class*="horizontal-nav-bar"] [class*="logo-container"] { width: auto !important; min-width: 6.4rem; display: flex; align-items: center; }
+      #app nav[class*="horizontal-nav-bar"] [class*="logo-container"] img { display: none !important; }
+      #app nav[class*="horizontal-nav-bar"] [class*="logo-container"]::before { content: "CINEFLOW" !important; white-space: nowrap !important; font-size: 1.45rem !important; letter-spacing: -.04em !important; }
+      html.dx-perf .dx-preview { display: none !important; }
+      html.dx-perf .dx-hero-backdrop { animation: none !important; }
+      html.dx-perf .dx-wide-blur,
+      html.dx-perf .dx-preview-aura,
+      html.dx-perf .dx-preview::before { display: none !important; }
+      html.dx-perf .dx-hero-backdrop { will-change: auto !important; }
+      html.dx-perf * { transition-duration: .12s !important; }
+    `;
+    document.head.append(cineCss);
     // Windows needs a few rendering workarounds in the theme (see "WINDOWS" there)
     if (/Windows/i.test(navigator.userAgent)) document.documentElement.classList.add("dx-win");
-    // …and dx.bi TV's lighter version of the look (see "WINDOWS AND TV" in the theme)
+    // …and CineFlow TV's lighter version of the look (see "WINDOWS AND TV" in the theme)
     if (IN_TV) document.documentElement.classList.add("dx-tv");
-    // …and the dx.bi app's (its window has its own buttons: see "THE DX.BI APP" in the theme)
+    // …and the CineFlow app's (its window has its own buttons: see "THE DX.BI APP" in the theme)
     if (IN_APP) document.documentElement.classList.add("dx-app");
     // …and the app's picture-in-picture window (see miniPlayer)
     miniPlayer.init();
@@ -13331,6 +14385,20 @@
     window.addEventListener("hashchange", onHash);
     window.addEventListener("resize", onResize);
     document.addEventListener("visibilitychange", onHash);
+    // CineFlow: the detail page's Play button starts the automatic source pick. The stream list
+    // itself is hidden while autoPick is on; this is the only visible control.
+    document.addEventListener("click", (e) => {
+      if (!settings.autoPick) return;
+      if (currentRoute() !== "detail") return;
+      const el = e.target instanceof Element ? e.target.closest('button, a, [role="button"], [class*="button-container"], [class*="play-button"]') : null;
+      if (!el || (el.dataset && el.dataset.href) || el.classList.contains("dx-cf-play")) return; // billboard Play: it only opens the detail page
+      const inDetail = !!el.closest('[class*="metadetails"]') || /play-button/.test(String(el.className));
+      if (!inDetail || !/^(play|reproducir|continuar|resume)\b/i.test((el.innerText || "").trim())) return;
+      // A series' Play opens its episode list first; only a page with a stream list is ready to pick.
+      setTimeout(() => {
+        if (document.querySelector('[class*="streams-list-container"]')) streamTools.autoStart();
+      }, 150);
+    }, true);
     document.addEventListener("click", onSoundClick, true);
     document.addEventListener("pointerdown", onDiscoverPick, true);
     document.addEventListener("keydown", onDiscoverPick, true);
@@ -13345,7 +14413,7 @@
     portalSizer.observe(document.body, { childList: true });
     themeLinkWatch.observe(document.head, { childList: true });
     ensureExtrasStyle();
-    // TV: animation and transition events from dx.bi's own parts (the billboard, badges, a title its
+    // TV: animation and transition events from CineFlow's own parts (the billboard, badges, a title its
     // card covers) stop short of Stremio's app. It has no use for them, and running its rarely used
     // handlers made a stick read Stremio's whole script back into memory first (a tenth of a second).
     if (IN_TV) {
@@ -13356,7 +14424,7 @@
         }, true);
       }
     }
-    // TV: the remote's focus styles are built now, while dx.bi starts, rather than on the first press
+    // TV: the remote's focus styles are built now, while CineFlow starts, rather than on the first press
     // (a new stylesheet restyles the whole page: half a second on a stick, just as you start moving)
     if (IN_TV) keyNav.looks();
     store.load().then(() => {
@@ -13382,6 +14450,85 @@
     log("ready");
   }
 
+  // Three-lines remote button: a focused list of Continue Watching titles with a single action.
+  // It uses Stremio's own dismiss button, so removing here is the same as removing on its card.
+  const continueMenu = {
+    el: null,
+    items: [],
+    onKey: null,
+
+    open() {
+      if (this.el) { this.close(); return; }
+      const cards = [...document.querySelectorAll('#app [class*="continue-watching-row"] [class*="meta-item-container"]')];
+      this.items = cards.map((card) => {
+        const dismiss = card.querySelector('[class*="dismiss-icon-layer"]');
+        if (!dismiss) return null;
+        const info = cardInfo(card) || {};
+        const title = String(info.title || card.querySelector('[class*="title"]')?.textContent || "Contenido").trim();
+        return { card, dismiss, title };
+      }).filter(Boolean);
+      const el = document.createElement("div");
+      el.className = "dx-cw-overlay";
+      el.innerHTML = `<div class="dx-cw-panel"><div class="dx-cw-head"><span>Quitar de Continuar viendo</span><button type="button" class="dx-cw-close">Cerrar</button></div><div class="dx-cw-list"></div></div>`;
+      document.body.append(el);
+      this.el = el;
+      el.querySelector(".dx-cw-close").addEventListener("click", () => this.close());
+      this.render();
+      this.onKey = (e) => this.key(e);
+      document.addEventListener("keydown", this.onKey, true);
+    },
+
+    render() {
+      if (!this.el) return;
+      const list = this.el.querySelector(".dx-cw-list");
+      list.innerHTML = "";
+      if (!this.items.length) {
+        list.innerHTML = '<div class="dx-cw-empty">No hay contenidos en Continuar viendo.</div>';
+        return;
+      }
+      this.items.forEach((item, i) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "dx-cw-item";
+        row.dataset.i = String(i);
+        row.innerHTML = `<span>${esc(item.title)}</span><b>Quitar</b>`;
+        row.addEventListener("click", () => this.remove(item));
+        list.append(row);
+      });
+      list.querySelector(".dx-cw-item")?.focus({ preventScroll: true });
+    },
+
+    remove(item) {
+      try { item.dismiss.click(); } catch (_) { /* Stremio will remove it if it can */ }
+      this.items = this.items.filter((x) => x !== item);
+      this.render();
+    },
+
+    key(e) {
+      if (!this.el) return;
+      if (e.key === "Escape" || e.key === "Backspace") {
+        e.preventDefault(); e.stopPropagation(); this.close(); return;
+      }
+      const rows = [...this.el.querySelectorAll(".dx-cw-item")];
+      const at = rows.indexOf(document.activeElement);
+      if (e.key === "ArrowDown") {
+        e.preventDefault(); e.stopPropagation(); rows[Math.min(rows.length - 1, at + 1)]?.focus({ preventScroll: true });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault(); e.stopPropagation(); rows[Math.max(0, at - 1)]?.focus({ preventScroll: true });
+      } else if (e.key === "Enter" || e.key === " ") {
+        if (at >= 0) { e.preventDefault(); e.stopPropagation(); rows[at].click(); }
+      }
+    },
+
+    close() {
+      if (this.onKey) document.removeEventListener("keydown", this.onKey, true);
+      this.onKey = null;
+      if (this.el) this.el.remove();
+      this.el = null;
+      try { window.__dxbiTv && window.__dxbiTv.restoreFocus && window.__dxbiTv.restoreFocus(); } catch (_) { /* not TV */ }
+    },
+  };
+
   const api = {
     settings,
     sync,
@@ -13394,15 +14541,16 @@
     homeLayout,
     episodes,
     calendarFill,
+    continueMenu,
     report,
-    // dx.bi TV's player: intro, recap and credits times for an episode ([] when nobody has added them)
+    // CineFlow TV's player: intro, recap and credits times for an episode ([] when nobody has added them)
     async skipSegments(type, metaId, videoId) {
       if (!settings.skipButtons) return [];
       const key = String(videoId);
       if (!skip.cache.has(key)) skip.cache.set(key, await skip.fetchSegments({ type, metaId, videoId: key }).catch(() => []));
       return skip.cache.get(key);
     },
-    // dx.bi TV's Back button: closes an open hover card, keeping its title selected (true if one was open)
+    // CineFlow TV's Back button: closes an open hover card, keeping its title selected (true if one was open)
     closePreview() {
       if (!preview.el || !preview.el.classList.contains("is-open")) return false;
       const card = preview.card;
@@ -13517,7 +14665,7 @@
   // ---------------------------------------------------------------------------
   // Contrast-adaptive sharpening (after AMD FidelityFX CAS, MIT) as an mpv user shader: the same
   // strength as the browser player's Sharpen
-  const MPV_SHARPEN = `//!DESC dx.bi sharpen (CAS)
+  const MPV_SHARPEN = `//!DESC CineFlow sharpen (CAS)
 //!HOOK MAIN
 //!BIND HOOKED
 #define SHARPNESS 0.45

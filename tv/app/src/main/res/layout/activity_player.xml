@@ -58,7 +58,7 @@
         android:textSize="17sp"
         android:visibility="gone" />
 
-    <!-- Skip intro / recap / credits, while one is playing (times from dx.bi) -->
+    <!-- Skip intro / recap / credits, while one is playing (times from CineFlow) -->
     <TextView
         android:id="@+id/skip_button"
         android:layout_width="wrap_content"

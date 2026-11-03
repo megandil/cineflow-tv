@@ -10,7 +10,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * Finds Stremio streaming servers (dx.bi or Stremio running on a computer) on the TV's own
+ * Finds Stremio streaming servers (CineFlow or Stremio running on a computer) on the TV's own
  * network, so torrents can play: a TV has no streaming server of its own.
  *
  * Done here rather than in the page: plain-http requests to other machines from an https page
