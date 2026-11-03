@@ -19,6 +19,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -41,7 +42,11 @@ class NativeSearchActivity : AppCompatActivity() {
     private lateinit var recycler: RecyclerView
     private lateinit var adapter: ResultAdapter
     private lateinit var status: TextView
+    private lateinit var categoryRow: LinearLayout
     private var generation = 0
+    private var tmdbBase: String? = null
+    private var categories: List<Category> = emptyList()
+    private var categoryViews: MutableList<TextView> = mutableListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,7 +67,7 @@ class NativeSearchActivity : AppCompatActivity() {
                 }
             }
         })
-        showDefaults()
+        setupExplore()
     }
 
     private fun buildUi(): View {
@@ -162,7 +167,18 @@ class NativeSearchActivity : AppCompatActivity() {
                 v.animate().scaleX(if (has) 1.06f else 1f).scaleY(if (has) 1.06f else 1f).setDuration(120).start()
             }
         })
-        content.addView(searchRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply { bottomMargin = dp(9) })
+        content.addView(searchRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply { bottomMargin = dp(7) })
+        val categoryScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(38)).apply { bottomMargin = dp(5) }
+        }
+        categoryRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        categoryScroll.addView(categoryRow, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        content.addView(categoryScroll)
         status = TextView(this).apply {
             text = "POPULARES · cargando…"
             setTextColor(Color.rgb(155,160,170))
@@ -185,6 +201,92 @@ class NativeSearchActivity : AppCompatActivity() {
         content.addView(recycler)
         root.addView(content, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         return root
+    }
+
+    private fun setupExplore() {
+        status.text = "Cargando categorías…"
+        thread(name = "cineflow-explore-setup", isDaemon = true) {
+            val catalogs = if (StremioSession.isLoggedIn(this)) StremioSession.catalogs(this) else emptyList()
+            val tmdb = catalogs.filter {
+                it.addon.contains("Movie Database", ignoreCase = true) ||
+                    it.addon.contains("TMDB", ignoreCase = true)
+            }
+            val built = if (tmdb.isNotEmpty()) {
+                tmdbBase = tmdb.first().url.substringBefore("/catalog/")
+                tmdb.distinctBy { it.title.lowercase(Locale.ROOT) + "|" + it.type }.map {
+                    Category(
+                        label = it.title.uppercase(Locale.ROOT) + if (it.type == "series") " · SERIES" else " · PELÍCULAS",
+                        type = it.type,
+                        url = it.url,
+                    )
+                }
+            } else {
+                listOf(
+                    Category("PELÍCULAS · POPULARES", "movie", "https://v3-cinemeta.strem.io/catalog/movie/top.json"),
+                    Category("SERIES · POPULARES", "series", "https://v3-cinemeta.strem.io/catalog/series/top.json"),
+                )
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                categories = built
+                renderCategories()
+                val start = categories.firstOrNull { it.label.contains("POPULAR") } ?: categories.firstOrNull()
+                if (start != null) loadCategory(start) else showDefaults()
+            }
+        }
+    }
+
+    private fun renderCategories() {
+        categoryRow.removeAllViews()
+        categoryViews.clear()
+        for (category in categories) {
+            val chip = TextView(this).apply {
+                text = category.label
+                setTextColor(Color.rgb(190,194,204))
+                textSize = 8f
+                letterSpacing = .08f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                isFocusable = true
+                isFocusableInTouchMode = true
+                isClickable = true
+                setPadding(dp(13), dp(7), dp(13), dp(7))
+                background = rounded(Color.rgb(20,22,28), 8, Color.rgb(58,61,72), 1)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32)).apply { rightMargin = dp(7) }
+                setOnClickListener { loadCategory(category) }
+                onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                    v.background = rounded(if (has) Color.WHITE else Color.rgb(20,22,28), 8,
+                        if (has) Color.WHITE else Color.rgb(58,61,72), if (has) 2 else 1)
+                    (v as TextView).setTextColor(if (has) Color.rgb(12,13,16) else Color.rgb(190,194,204))
+                }
+            }
+            categoryViews.add(chip)
+            categoryRow.addView(chip)
+        }
+    }
+
+    private fun markCategory(category: Category) {
+        val index = categories.indexOf(category)
+        categoryViews.forEachIndexed { i, chip ->
+            val active = i == index
+            chip.background = rounded(if (active) CORAL else Color.rgb(20,22,28), 8,
+                if (active) CORAL else Color.rgb(58,61,72), 1)
+            chip.setTextColor(if (active) Color.rgb(12,13,16) else Color.rgb(190,194,204))
+        }
+    }
+
+    private fun loadCategory(category: Category) {
+        markCategory(category)
+        generation++
+        val gen = generation
+        status.text = "CARGANDO · ${category.label}"
+        thread(name = "cineflow-explore-category", isDaemon = true) {
+            val items = fetchJson(category.url, category.type)
+            runOnUiThread {
+                if (gen != generation || isFinishing || isDestroyed) return@runOnUiThread
+                renderResults(items, category.label)
+            }
+        }
     }
 
     private fun loadCatalog(url: String, title: String, type: String) {
@@ -225,8 +327,16 @@ class NativeSearchActivity : AppCompatActivity() {
         status.text = "Buscando «$text»…"
         thread(name = "cineflow-search", isDaemon = true) {
             val encoded = URLEncoder.encode(text, "UTF-8")
-            val movies = fetchSearch("movie", encoded)
-            val series = fetchSearch("series", encoded)
+            val base = tmdbBase
+            val movies: List<Meta>
+            val series: List<Meta>
+            if (base != null) {
+                movies = fetchJson("$base/catalog/movie/tmdb.search/search=$encoded.json", "movie")
+                series = fetchJson("$base/catalog/series/tmdb.search/search=$encoded.json", "series")
+            } else {
+                movies = fetchSearch("movie", encoded)
+                series = fetchSearch("series", encoded)
+            }
             runOnUiThread {
                 if (gen != generation || isFinishing || isDestroyed) return@runOnUiThread
                 renderResults((movies + series).distinctBy { it.id }, "RESULTADOS")
@@ -385,6 +495,8 @@ class NativeSearchActivity : AppCompatActivity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private data class Category(val label: String, val type: String, val url: String)
 
     private data class Meta(
         val id: String, val type: String, val name: String, val poster: String?, val background: String?,

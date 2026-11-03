@@ -155,8 +155,14 @@ object StremioSession {
             val addon = manifest.optString("name")
             candidates += Candidate(transport.removeSuffix("/manifest.json").trimEnd('/'), priority, addon)
         }
-        // Prefer a metadata addon (TMDB/PeLis) over Cinemeta when both support the id.
-        for (candidate in candidates.sortedWith(compareBy<Candidate> { it.priority }.thenBy { if (it.addon.equals("Cinemeta", true)) 1 else 0 })) {
+        // The TMDB addon is the Spanish metadata authority when installed: it carries imdb_id,
+        // which is what Peerflix/Torrentio need. PeLis/Cinemeta are fallbacks.
+        fun addonPriority(name: String): Int = when {
+            name.contains("Movie Database", ignoreCase = true) || name.contains("TMDB", ignoreCase = true) -> 0
+            name.equals("Cinemeta", ignoreCase = true) -> 2
+            else -> 1
+        }
+        for (candidate in candidates.sortedWith(compareBy<Candidate> { it.priority }.thenBy { addonPriority(it.addon) })) {
             val url = "${candidate.base}/meta/$type/${Uri.encode(id, ":")}.json"
             val raw = get(url) ?: continue
             val meta = JSONObject(raw).optJSONObject("meta") ?: continue
@@ -488,9 +494,20 @@ object StremioSession {
         streamCache[cacheKey]?.let { (at, cached) ->
             if (System.currentTimeMillis() - at < 600_000L && cached.isNotEmpty()) return cached
         }
-        val list = addons(context).filter {
-            (type in it.types || it.types.isEmpty()) && (it.resources.isEmpty() || "stream" in it.resources)
-        }
+        val list = addons(context)
+            .filter { (type in it.types || it.types.isEmpty()) && (it.resources.isEmpty() || "stream" in it.resources) }
+            // Local Files only exists on the device that hosts Stremio's streaming server.
+            .filter { !it.transportUrl.contains("127.0.0.1") && !it.transportUrl.contains("localhost") }
+            .sortedWith(compareBy {
+                when {
+                    it.name.contains("Peerflix", true) ||
+                        it.name.contains("PeLis", true) ||
+                        it.name.contains("Torrentio", true) ||
+                        it.name.contains("MediaFusion", true) -> 0
+                    it.name.contains("WatchHub", true) -> 2
+                    else -> 1
+                }
+            })
         if (list.isEmpty()) return emptyList()
         // One addon at a time: Torrentio AD, MediaFusion and Peerflix all use the same
         // AllDebrid account, and firing them together can trigger a temporary AD block.
@@ -500,7 +517,7 @@ object StremioSession {
             completion.submit(java.util.concurrent.Callable { index to fetchAddonStreams(addon, type, id) })
         }
         val byAddon = HashMap<Int, List<Stream>>()
-        val deadline = System.currentTimeMillis() + 10_000L
+        val deadline = System.currentTimeMillis() + 15_000L
         try {
             for (i in list.indices) {
                 val remaining = deadline - System.currentTimeMillis()
@@ -508,10 +525,8 @@ object StremioSession {
                 val future = completion.poll(remaining, TimeUnit.MILLISECONDS) ?: break
                 val (index, streams) = future.get()
                 byAddon[index] = streams
-                // Stop as soon as one addon has a usable answer. Querying the other AllDebrid
-                // addons (MediaFusion, Peerflix) multiplies AD link resolutions and can trigger
-                // its temporary block; they remain available when this one has no links.
-                if (streams.isNotEmpty()) break
+                // Collect every provider so the Spanish TMDB detail shows Peerflix, PeLis and
+                // Torrentio together instead of only the first addon that answers.
             }
         } catch (_: Exception) {
             // use whatever arrived
