@@ -77,6 +77,7 @@ class PlayerActivity : AppCompatActivity() {
     private val autoSkipped = mutableSetOf<SkipSegment>()
     private var showing: SkipSegment? = null
     private lateinit var skipButton: TextView
+    private lateinit var episodeLabel: TextView
     private var progressBar: View? = null
     private var streamJson: String? = null
     private var openDetailOnBack = false
@@ -143,6 +144,7 @@ class PlayerActivity : AppCompatActivity() {
         clock = findViewById(R.id.clock)
         seekFlash = findViewById(R.id.seek_flash)
         skipButton = findViewById(R.id.skip_button)
+        episodeLabel = findViewById(R.id.episode_label)
         // The Skip chip must never steal D-pad focus from the playback controls. OK still
         // activates it while the controls are hidden, and Up opens the normal controls.
         skipButton.isFocusable = false
@@ -205,6 +207,7 @@ class PlayerActivity : AppCompatActivity() {
         nextSeason = stream.optInt("nextSeason", 0)
         nextEpisode = stream.optInt("nextEpisode", 0)
         nextTitle = stream.optString("nextTitle").takeIf { it.isNotBlank() }
+        val episodeTitle = stream.optString("episodeTitle").takeIf { it.isNotBlank() }
         metaName = stream.optString("name").takeIf { it.isNotBlank() }
         metaPoster = stream.optString("poster").takeIf { it.isNotBlank() }
         segments = stream.optJSONArray("skips")?.let { list ->
@@ -219,6 +222,15 @@ class PlayerActivity : AppCompatActivity() {
         showClock = stream.optBoolean("clock", true)
         torrent = stream.optBoolean("torrent", false)
         findViewById<TextView>(R.id.title).text = stream.optString("title")
+        if (episodeSeason > 0 && episodeNumber > 0) {
+            episodeLabel.text = listOfNotNull(
+                "T$episodeSeason E$episodeNumber",
+                episodeTitle,
+            ).joinToString("  ·  ")
+            episodeLabel.visibility = View.VISIBLE
+        } else {
+            episodeLabel.visibility = View.GONE
+        }
         findViewById<TextView>(R.id.subtitle).apply {
             text = stream.optString("subtitle")
             visibility = if (text.isNullOrEmpty()) View.GONE else View.VISIBLE
@@ -421,9 +433,16 @@ class PlayerActivity : AppCompatActivity() {
             else -> "Saltar créditos"
         }
         skipButton.visibility = View.VISIBLE
-        if (playerView.isControllerFullyVisible) {
-            skipButton.isFocusable = true
-            skipButton.isFocusableInTouchMode = true
+        skipButton.isFocusable = true
+        skipButton.isFocusableInTouchMode = true
+        skipButton.nextFocusDownId = progressBar?.id ?: playerView.id
+        progressBar?.nextFocusUpId = skipButton.id
+        if (seg.type == "credits") {
+            playerView.showController()
+            skipButton.postDelayed({
+                if (skipButton.visibility == View.VISIBLE && !isFinishing && !isDestroyed) skipButton.requestFocus()
+            }, 180L)
+        } else if (playerView.isControllerFullyVisible) {
             progressBar?.requestFocus()
         }
     }
@@ -445,6 +464,8 @@ class PlayerActivity : AppCompatActivity() {
         val nextId = nextEpisodeId() ?: return false
         val metaId = nativeMetaId ?: currentVideoId?.substringBefore(':') ?: return false
         nextPending = true
+        seekFlash.text = "Abriendo siguiente episodio…"
+        seekFlash.visibility = View.VISIBLE
         DirectPlayback.play(
             this,
             DirectPlayback.Target(
@@ -457,8 +478,13 @@ class PlayerActivity : AppCompatActivity() {
                 season = nextSeason.takeIf { it > 0 } ?: nextId.split(':').getOrNull(1)?.toIntOrNull() ?: 0,
                 episode = nextEpisode.takeIf { it > 0 } ?: nextId.split(':').getOrNull(2)?.toIntOrNull() ?: 0,
                 episodeTitle = nextTitle,
+                imdbId = imdbId,
             ),
-            onError = { finishWith(ended = true) },
+            onError = { message ->
+                seekFlash.text = message
+                seekFlash.visibility = View.VISIBLE
+                nextPending = false
+            },
             onStarted = { finishWith(ended = true) },
         )
         return true

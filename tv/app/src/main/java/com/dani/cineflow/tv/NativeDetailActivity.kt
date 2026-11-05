@@ -708,7 +708,7 @@ class NativeDetailActivity : AppCompatActivity() {
             .put("url", url)
             .put("torrent", torrent)
             .put("title", m.name)
-            .put("subtitle", if (videoLabel.isBlank()) stream.name else "$videoLabel · ${stream.name}")
+            .put("subtitle", stream.name)
             .put("audioLanguage", if (NativeSettings.value(this, "audioLanguage", "spa") == "original") "" else NativeSettings.value(this, "audioLanguage", "spa"))
             .put("clock", true)
             .put("metaId", m.id)

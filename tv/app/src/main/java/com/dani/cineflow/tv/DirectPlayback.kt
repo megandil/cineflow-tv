@@ -33,9 +33,7 @@ object DirectPlayback {
             val videoId = target.videoId ?: target.id
             activity.runOnUiThread { onStatus("Buscando proveedores…") }
             var streams = StremioSession.streams(activity, target.type, videoId)
-            if (streams.isEmpty() &&
-                (!StremioSession.isLoggedIn(activity) || !StremioSession.hasStreamAddons(activity))
-            ) {
+            if (streams.isEmpty()) {
                 activity.runOnUiThread { onStatus("Probando Torrentio…") }
                 streams = torrentio(target.type, videoId)
             }

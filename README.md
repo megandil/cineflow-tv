@@ -67,6 +67,8 @@ La app no aloja contenido. Los catálogos, metadatos y proveedores vienen de los
 
 ### Reproductor
 - **ExoPlayer** nativo.
+- Temporada y episodio visibles en el reproductor.
+- Saltar intro, resumen y créditos; al saltar créditos pasa al siguiente episodio.
 - Reproducción de torrents en el propio televisor.
 - Subtítulos y pistas de audio.
 - Saltos de intro/créditos compatibles.
@@ -139,10 +141,9 @@ El APK queda en `tv/app/build/outputs/apk/release/app-release.apk`.
 ## Versionado y releases
 
 - La versión está en `tv/app/build.gradle.kts` (`cineflowVersion`).
-- Se publica una release con etiqueta `vX.Y.Z`.
-- El workflow `.github/workflows/cineflow-release.yml` construye y adjunta `CineFlow.apk`.
+- Se publica una release manual con etiqueta `vX.Y.Z` y el APK adjunto.
 - La app consulta la release **latest** de GitHub y ofrece la actualización.
-- Las releases deben firmarse siempre con la misma clave; la clave está en los secretos `CINEFLOW_KEYSTORE_B64` y `CINEFLOW_KEYSTORE_PASSWORD`.
+- Las releases deben firmarse siempre con la misma clave de actualización.
 
 ## Estructura
 
@@ -151,7 +152,6 @@ tv/                         App Android nativa
   app/src/main/java/        Kotlin: Inicio, fichas, perfiles, reproductor...
   app/src/main/res/         Recursos, iconos y tema
 docs/screenshots/           Capturas del README
-.github/workflows/          Build y publicación del APK
 ```
 
 ## Aviso
