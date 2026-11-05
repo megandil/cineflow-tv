@@ -50,7 +50,7 @@ class NativeCalendarActivity : AppCompatActivity() {
         })
         content.addView(TextView(this).apply {
             text = "Calendario"
-            setTextColor(CREAM); textSize = 30f; typeface = Typeface.create("serif", Typeface.BOLD)
+            setTextColor(CREAM); textSize = 30f; typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, dp(5), 0, dp(3))
         })
         content.addView(TextView(this).apply {
@@ -165,11 +165,11 @@ class NativeCalendarActivity : AppCompatActivity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
-        private val INK = Color.rgb(7,8,11)
-        private val CARD = Color.rgb(18,20,26)
+        private val INK = Color.rgb(5,5,7)
+        private val CARD = Color.rgb(18,18,20)
         private val BORDER = Color.rgb(48,51,60)
-        private val CREAM = Color.rgb(242,235,221)
-        private val CORAL = Color.rgb(255,77,61)
+        private val CREAM = Color.rgb(245,245,247)
+        private val CORAL = Color.rgb(245,245,247)
         private val MINT = Color.rgb(145,227,207)
     }
 }

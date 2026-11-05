@@ -18,13 +18,14 @@ object NativeImageLoader {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
 
-    fun load(view: ImageView, url: String?, sample: Int = 2) {
+    fun load(view: ImageView, url: String?, sample: Int = 2, size: String = "w780") {
         if (url.isNullOrBlank()) return
-        view.tag = url
-        cache.get(url)?.let { view.setImageBitmap(it); return }
+        val resolved = upgrade(url, size)
+        view.tag = resolved
+        cache.get(resolved)?.let { view.setImageBitmap(it); return }
         pool.execute {
             val bitmap = try {
-                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                val connection = (URL(resolved).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 12_000
                     readTimeout = 20_000
                     instanceFollowRedirects = true
@@ -36,14 +37,20 @@ object NativeImageLoader {
                 }
                 connection.inputStream.use { BitmapFactory.decodeStream(it, null, options) }
             } catch (error: Exception) {
-                android.util.Log.e("CineFlow", "image failed: $url", error)
+                android.util.Log.e("CineFlow", "image failed: $resolved", error)
                 null
             }
             if (bitmap == null) return@execute
-            cache.put(url, bitmap)
+            cache.put(resolved, bitmap)
             main.post {
-                if (view.tag == url) view.setImageBitmap(bitmap)
+                if (view.tag == resolved) view.setImageBitmap(bitmap)
             }
         }
+    }
+
+    /** TMDB catalogue images are often w300; ask for a screen-sized variant instead. */
+    private fun upgrade(url: String, size: String): String {
+        if (!url.contains("image.tmdb.org/t/p/")) return url
+        return url.replace(Regex("/t/p/[^/]+/"), "/t/p/$size/")
     }
 }

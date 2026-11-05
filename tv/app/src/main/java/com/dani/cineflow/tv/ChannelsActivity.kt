@@ -136,6 +136,26 @@ class ChannelsActivity : AppCompatActivity() {
             setPadding(dp(14), 0, 0, 0)
         }
         titleRow.addView(count)
+        titleRow.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        titleRow.addView(TextView(this).apply {
+            text = "Guía"
+            setTextColor(Color.rgb(10, 10, 12))
+            textSize = 13f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            gravity = Gravity.CENTER
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isClickable = true
+            background = rounded(Color.rgb(245, 245, 247), 19, Color.TRANSPARENT, 0)
+            setPadding(dp(20), 0, dp(20), 0)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)).apply { leftMargin = dp(12) }
+            setOnClickListener { startActivity(Intent(this@ChannelsActivity, GuideActivity::class.java)) }
+            onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                v.background = rounded(if (has) Color.WHITE else Color.rgb(245, 245, 247), 19, Color.TRANSPARENT, 0)
+                v.animate().scaleX(if (has) 1.04f else 1f).scaleY(if (has) 1.04f else 1f)
+                    .setDuration(160L).setInterpolator(android.view.animation.OvershootInterpolator(0.3f)).start()
+            }
+        })
         root.addView(titleRow)
 
         root.addView(TextView(this).apply {
@@ -270,17 +290,22 @@ class ChannelsActivity : AppCompatActivity() {
         chips.clear()
         for (g in groups) {
             val chip = TextView(this).apply {
-                text = if (g == "Todos") "Todos" else g
+                text = if (g == "Todos") "Todos" else g.split(" ").joinToString(" ") { it.lowercase(Locale.getDefault()).replaceFirstChar { c -> c.titlecase(Locale.getDefault()) } }
                 setTextColor(MUTED)
-                textSize = 12f
-                typeface = Typeface.DEFAULT_BOLD
+                textSize = 13f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 gravity = Gravity.CENTER
                 setPadding(dp(14), 0, dp(14), 0)
                 isFocusable = true
                 isFocusableInTouchMode = true
                 background = chipBackground(false)
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34)).apply { rightMargin = dp(8) }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)).apply { rightMargin = dp(4) }
                 setOnClickListener { selectGroup(g) }
+                onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                    (v as TextView).setTextColor(
+                        if (has || g == selectedGroup) Color.rgb(10, 10, 12) else MUTED
+                    )
+                }
             }
             chips[g] = chip
             categoryRow.addView(chip)
@@ -299,7 +324,7 @@ class ChannelsActivity : AppCompatActivity() {
             val selected = group == selectedGroup
             chip.isSelected = selected
             chip.background = chipBackground(selected)
-            chip.setTextColor(if (selected) Color.WHITE else MUTED)
+            chip.setTextColor(if (selected) Color.rgb(10, 10, 12) else MUTED)
         }
     }
 
@@ -545,6 +570,13 @@ class ChannelsActivity : AppCompatActivity() {
         imm.hideSoftInputFromWindow(search.windowToken, 0)
     }
 
+    private fun rounded(color: Int, radius: Int, stroke: Int, strokeWidth: Int): GradientDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        setColor(color)
+        cornerRadius = dp(radius).toFloat()
+        if (strokeWidth > 0) setStroke(dp(strokeWidth), stroke)
+    }
+
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun chipBackground(selected: Boolean): StateListDrawable {
@@ -555,14 +587,12 @@ class ChannelsActivity : AppCompatActivity() {
         }
         val focusedBg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            setColor(Color.rgb(37, 37, 41))
-            setStroke(dp(2), Color.WHITE)
+            setColor(Color.rgb(245, 245, 247))
             cornerRadius = dp(999).toFloat()
         }
         val normalBg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            setColor(Color.rgb(23, 23, 25))
-            setStroke(dp(1), BORDER)
+            setColor(Color.TRANSPARENT)
             cornerRadius = dp(999).toFloat()
         }
         return StateListDrawable().apply {
@@ -594,7 +624,8 @@ class ChannelsActivity : AppCompatActivity() {
     private fun cardBackground(): StateListDrawable {
         val focused = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            setColor(ACCENT)
+            setColor(CARD)
+            setStroke(dp(2), Color.WHITE)
             cornerRadius = dp(10).toFloat()
         }
         val normal = GradientDrawable().apply {
@@ -681,8 +712,10 @@ class ChannelsActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val channel = items[position]
-            holder.name.text = channel.name
-            holder.tag.text = channel.group.uppercase()
+            holder.name.text = channel.name.replace("-->", "·")
+            holder.tag.text = channel.group.split(" ").joinToString(" ") {
+                it.lowercase(Locale.getDefault()).replaceFirstChar { c -> c.titlecase(Locale.getDefault()) }
+            }
             val guide = programs[channel.epgId]?.let { teamsFromTitle(it) }
             val fallback = if (channel.group == "La Liga") "Sin datos de equipos" else null
             val text = guide ?: fallback
@@ -697,11 +730,11 @@ class ChannelsActivity : AppCompatActivity() {
     }
 
     companion object {
-        private val BG = Color.rgb(10, 10, 11)
-        private val CARD = Color.rgb(23, 23, 25)
+        private val BG = Color.rgb(5, 5, 7)
+        private val CARD = Color.rgb(18, 18, 20)
         private val BORDER = Color.rgb(48, 48, 52)
         private val MUTED = Color.rgb(163, 163, 170)
-        private val ACCENT = Color.rgb(229, 9, 20)
+        private val ACCENT = Color.rgb(245, 245, 247)
         private val PROGRAM = Color.rgb(167, 218, 184)
         private val CATEGORY_PRIORITY = listOf("La Liga", "Liga de Campeones", "Fútbol")
         private const val EPG_URL = "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml.gz"

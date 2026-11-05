@@ -39,6 +39,8 @@ class NativeDetailActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private lateinit var backdrop: ImageView
     private lateinit var title: TextView
+    private lateinit var logoView: ImageView
+    private lateinit var badges: LinearLayout
     private lateinit var metaLine: TextView
     private lateinit var description: TextView
     private lateinit var actions: LinearLayout
@@ -119,48 +121,75 @@ class NativeDetailActivity : AppCompatActivity() {
             clipChildren = false
         }
         hero.addView(TextView(this).apply {
-            text = "‹  CINEFLOW"
-            setTextColor(CREAM)
-            textSize = 11f
-            letterSpacing = .12f
-            typeface = Typeface.DEFAULT_BOLD
+            text = "‹  Inicio"
+            setTextColor(Color.rgb(240,240,244))
+            textSize = 13f
+            letterSpacing = 0f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             isFocusable = true
             isFocusableInTouchMode = true
-            setPadding(dp(30), dp(24), dp(30), dp(12))
+            setPadding(dp(14), dp(7), dp(18), dp(7))
+            background = rounded(0xCC141416.toInt(), 20, 0x24FFFFFF, 1)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.START).apply {
+                leftMargin = dp(30)
+                topMargin = dp(18)
+            }
             setOnClickListener { finish() }
         })
         val heroText = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(54), dp(20), dp(54), dp(22))
+            setPadding(dp(80), dp(20), dp(80), dp(22))
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
         }
         heroText.addView(TextView(this).apply {
-            text = if (type == "series") "SERIE" else "PELÍCULA"
+            text = if (type == "series") "Serie" else "Película"
             setTextColor(CORAL)
-            textSize = 8f
+            textSize = 11f
             letterSpacing = .22f
             typeface = Typeface.DEFAULT_BOLD
         })
+        logoView = ImageView(this).apply {
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_START
+            visibility = View.GONE
+            maxWidth = dp(700)
+            maxHeight = dp(100)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(100)).apply { bottomMargin = dp(4) }
+        }
+        heroText.addView(logoView)
         title = TextView(this).apply {
             text = "Cargando…"
             setTextColor(CREAM)
             textSize = 36f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             maxLines = 2
             includeFontPadding = false
             setPadding(0, dp(3), 0, dp(5))
         }
         heroText.addView(title)
-        metaLine = TextView(this).apply { setTextColor(Color.rgb(190,195,202)); textSize = 10f; letterSpacing = .05f }
+        badges = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(2), 0, dp(6))
+        }
+        heroText.addView(badges)
+        metaLine = TextView(this).apply {
+            setTextColor(Color.rgb(190,195,202)); textSize = 10f; letterSpacing = .05f
+            visibility = View.GONE
+        }
         heroText.addView(metaLine)
         actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             // Buttons scale on focus; keep their rounded left edge inside the container.
-            setPadding(dp(6), dp(14), dp(6), 0)
+            setPadding(dp(10), dp(14), dp(10), 0)
             clipChildren = false
             clipToPadding = false
         }
         heroText.clipChildren = false
+        heroText.clipToPadding = false
         heroText.addView(actions)
         hero.addView(heroText)
         content.addView(hero)
@@ -211,20 +240,45 @@ class NativeDetailActivity : AppCompatActivity() {
 
     private fun render(meta: Meta) {
         title.text = meta.name
-        metaLine.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }, meta.runtime, meta.genres?.take(3)?.joinToString("  ·  ")).joinToString("     ")
+        if (!meta.logo.isNullOrBlank() && !meta.name.startsWith("The ", true) && !meta.name.startsWith("A ", true)) {
+            logoView.visibility = View.VISIBLE
+            title.visibility = View.GONE
+            NativeImageLoader.load(logoView, meta.logo, 2, "original")
+        } else {
+            logoView.visibility = View.GONE
+            title.visibility = View.VISIBLE
+        }
+        metaLine.text = ""
+        badges.removeAllViews()
+        fun addBadge(value: String?) {
+            if (value.isNullOrBlank()) return
+            badges.addView(TextView(this).apply {
+                text = value
+                setTextColor(Color.rgb(240,240,244))
+                textSize = 9.5f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setPadding(dp(7), dp(3), dp(7), dp(3))
+                background = rounded(0x33FFFFFF, 4, 0x66FFFFFF, 1)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(6) }
+            })
+        }
+        addBadge(meta.releaseInfo)
+        addBadge(meta.rating?.let { "★ $it" })
+        addBadge(meta.runtime)
+        meta.genres?.take(3)?.forEach { addBadge(it) }
         description.text = meta.description.orEmpty()
-        NativeImageLoader.load(backdrop, meta.background ?: meta.poster, 2)
+        NativeImageLoader.load(backdrop, meta.background ?: meta.poster, 2, "original")
         actions.removeAllViews()
-        val play = pill("▶   VER AHORA", true)
+        val play = pill("▶   Reproducir", true)
         play.id = View.generateViewId()
         playButton = play
         play.setOnClickListener { playFromStart() }
-        val provider = pill("PROVEEDOR", false)
+        val provider = circleButton("⋯") { chooseProvider() }
         providerButton = provider
-        provider.setOnClickListener { chooseProvider() }
-        actions.addView(play, LinearLayout.LayoutParams(dp(200), dp(40)).apply { rightMargin = dp(8) })
-        actions.addView(provider, LinearLayout.LayoutParams(dp(145), dp(40)).apply { rightMargin = dp(8) })
-        val library = pill("＋  MI BIBLIOTECA", false)
+        actions.addView(play, LinearLayout.LayoutParams(dp(175), dp(42)).apply { rightMargin = dp(9) })
+        actions.addView(provider, LinearLayout.LayoutParams(dp(44), dp(44)).apply { rightMargin = dp(9) })
+        val library = circleButton("+") { }
         libraryButton = library
         library.setOnClickListener {
             val local = !Profiles.isMain(this)
@@ -240,10 +294,10 @@ class NativeDetailActivity : AppCompatActivity() {
                     ProfileLibrary.remove(this, meta.id)
                 }
                 inLibrary = target
-                library.text = if (target) "✓  EN MI BIBLIOTECA" else "＋  MI BIBLIOTECA"
+                library.text = if (target) "✓" else "+"
                 return@setOnClickListener
             }
-            library.text = if (inLibrary) "QUITANDO…" else "GUARDANDO…"
+            library.text = "…"
             thread(name = "cineflow-library-toggle", isDaemon = true) {
                 val (ok, message) = if (target)
                     StremioSession.addToLibrary(this, StremioSession.MetaInput(meta.id, meta.type, meta.name, meta.poster, meta.background, meta.releaseInfo))
@@ -252,21 +306,21 @@ class NativeDetailActivity : AppCompatActivity() {
                     if (isFinishing || isDestroyed) return@runOnUiThread
                     if (ok) {
                         inLibrary = target
-                        library.text = if (target) "✓  EN MI BIBLIOTECA" else "＋  MI BIBLIOTECA"
+                        library.text = if (target) "✓" else "+"
                     } else {
-                        library.text = if (inLibrary) "✓  EN MI BIBLIOTECA" else "＋  MI BIBLIOTECA"
+                        library.text = if (inLibrary) "✓" else "+"
                         status.text = message
                     }
                 }
             }
         }
-        actions.addView(library, LinearLayout.LayoutParams(dp(190), dp(40)))
+        actions.addView(library, LinearLayout.LayoutParams(dp(44), dp(44)))
         thread(name = "cineflow-library-check", isDaemon = true) {
             val has = if (Profiles.isMain(this)) StremioSession.isInLibrary(this, meta.id) else ProfileLibrary.contains(this, meta.id)
             runOnUiThread {
                 if (!isFinishing && !isDestroyed) {
                     inLibrary = has
-                    if (has) library.text = "✓  EN MI BIBLIOTECA"
+                    if (has) library.text = "✓"
                 }
             }
         }
@@ -298,7 +352,7 @@ class NativeDetailActivity : AppCompatActivity() {
         val seasonTitle = TextView(this).apply {
             setTextColor(CREAM)
             textSize = 15f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, 0, 0, dp(2))
         }
         val seasonCount = TextView(this).apply {
@@ -360,9 +414,9 @@ class NativeDetailActivity : AppCompatActivity() {
         }
 
         body.addView(TextView(this).apply {
-            text = "EPISODIOS"
+            text = "Episodios"
             setTextColor(CORAL)
-            textSize = 8f
+            textSize = 11f
             letterSpacing = .18f
             typeface = Typeface.DEFAULT_BOLD
             setPadding(0, dp(15), 0, dp(1))
@@ -420,7 +474,7 @@ class NativeDetailActivity : AppCompatActivity() {
             scaleType = ImageView.ScaleType.CENTER_CROP
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
         }
-        NativeImageLoader.load(image, video.thumbnail ?: meta.poster, 3)
+        NativeImageLoader.load(image, video.thumbnail ?: meta.poster, 1)
         art.addView(image)
         art.addView(View(this).apply {
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0x22000000, 0xBB07080B.toInt()))
@@ -429,7 +483,7 @@ class NativeDetailActivity : AppCompatActivity() {
         val badge = TextView(this).apply {
             text = "T${video.season}  ·  E${video.episode}"
             setTextColor(Color.WHITE)
-            textSize = 8f
+            textSize = 11f
             letterSpacing = .08f
             typeface = Typeface.DEFAULT_BOLD
             setBackgroundColor(0xAA07080B.toInt())
@@ -476,7 +530,7 @@ class NativeDetailActivity : AppCompatActivity() {
             card.addView(TextView(this).apply {
                 text = overview
                 setTextColor(Color.rgb(148,153,163))
-                textSize = 8f
+                textSize = 11f
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
                 setPadding(dp(9), dp(2), dp(9), dp(6))
@@ -497,7 +551,7 @@ class NativeDetailActivity : AppCompatActivity() {
         panel.addView(TextView(this).apply {
             text = "EPISODIO"
             setTextColor(CORAL)
-            textSize = 8f
+            textSize = 11f
             letterSpacing = .18f
             typeface = Typeface.DEFAULT_BOLD
         })
@@ -505,7 +559,7 @@ class NativeDetailActivity : AppCompatActivity() {
             text = "T${video.season} E${video.episode} · ${video.title ?: video.name ?: "Episodio ${video.episode}"}"
             setTextColor(CREAM)
             textSize = 19f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, dp(4), 0, dp(14))
         })
         fun option(icon: String, title: String, subtitle: String, action: () -> Unit): TextView {
@@ -687,11 +741,11 @@ class NativeDetailActivity : AppCompatActivity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(22), dp(18), dp(22), dp(16))
-            background = rounded(Color.rgb(18,20,26), 16, BORDER, 1)
+            background = rounded(Color.rgb(18,18,20), 16, BORDER, 1)
             layoutParams = FrameLayout.LayoutParams(dp(650), dp(520), Gravity.CENTER)
         }
         card.addView(TextView(this).apply {
-            text = "ELEGIR PROVEEDOR"
+            text = "Elegir proveedor"
             setTextColor(CORAL)
             textSize = 9f
             letterSpacing = .2f
@@ -779,6 +833,7 @@ class NativeDetailActivity : AppCompatActivity() {
                 genres = m.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
                 videos = videos,
                 imdbId = m.optString("imdb_id").takeIf { it.startsWith("tt") },
+                logo = m.optString("logo").takeIf { it.isNotBlank() },
             )
         } catch (_: Exception) {
             null
@@ -826,25 +881,54 @@ class NativeDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun pill(text: String, filled: Boolean): TextView = TextView(this).apply {
-        this.text = text
-        setTextColor(if (filled) Color.rgb(12,13,16) else CREAM)
-        textSize = 8f
-        letterSpacing = .1f
-        typeface = Typeface.DEFAULT_BOLD
+    private fun circleButton(symbol: String, action: () -> Unit): TextView = TextView(this).apply {
+        text = symbol
+        setTextColor(Color.WHITE)
+        textSize = 20f
+        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
         gravity = Gravity.CENTER
         isFocusable = true
         isFocusableInTouchMode = true
         isClickable = true
-        background = if (filled) rounded(CORAL, 15, CORAL, 1) else rounded(CARD, 15, BORDER, 1)
+        background = rounded(0x99424244.toInt(), 23, 0x44FFFFFF, 1)
+        setPadding(0, 0, 0, 0)
+        setOnClickListener { action() }
+        setOnFocusChangeListener { v, has ->
+            v.background = rounded(if (has) Color.WHITE else 0x99424244.toInt(), 23,
+                if (has) Color.TRANSPARENT else 0x44FFFFFF, if (has) 0 else 1)
+            (v as TextView).setTextColor(if (has) Color.rgb(10,10,12) else Color.WHITE)
+            v.animate().scaleX(if (has) 1.06f else 1f).scaleY(if (has) 1.06f else 1f)
+                .setDuration(180L)
+                .setInterpolator(android.view.animation.OvershootInterpolator(0.3f))
+                .start()
+        }
+    }
+
+    private fun pill(text: String, filled: Boolean): TextView = TextView(this).apply {
+        this.text = text
+        setTextColor(if (filled) Color.rgb(10,10,12) else Color.WHITE)
+        textSize = 13f
+        letterSpacing = 0f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        gravity = Gravity.CENTER
+        isFocusable = true
+        isFocusableInTouchMode = true
+        isClickable = true
+        background = if (filled) rounded(Color.rgb(245,245,247), 23, Color.TRANSPARENT, 0)
+        else rounded(0x99424244.toInt(), 23, 0x44FFFFFF, 1)
         clipToOutline = false
         stateListAnimator = null
         includeFontPadding = false
-        setPadding(dp(14), 0, dp(14), 0)
+        setPadding(dp(18), 0, dp(18), 0)
         setOnFocusChangeListener { v, has ->
-            v.background = if (filled) rounded(if (has) Color.WHITE else CORAL, 15, if (has) CREAM else CORAL, 1)
-            else rounded(if (has) Color.rgb(43,46,55) else CARD, 15, if (has) CREAM else BORDER, if (has) 2 else 1)
-            v.animate().scaleX(if (has) 1.04f else 1f).scaleY(if (has) 1.04f else 1f).setDuration(120).start()
+            v.background = if (filled) rounded(Color.WHITE, 23, Color.TRANSPARENT, 0)
+            else rounded(if (has) Color.rgb(245,245,247) else 0x99424244.toInt(), 23,
+                if (has) Color.TRANSPARENT else 0x44FFFFFF, if (has) 0 else 1)
+            (v as TextView).setTextColor(if (has) Color.rgb(10,10,12) else if (filled) Color.rgb(10,10,12) else Color.WHITE)
+            v.animate().scaleX(if (has) 1.045f else 1f).scaleY(if (has) 1.045f else 1f)
+                .setDuration(180L)
+                .setInterpolator(android.view.animation.OvershootInterpolator(0.3f))
+                .start()
         }
     }
 
@@ -878,6 +962,7 @@ class NativeDetailActivity : AppCompatActivity() {
         val id: String, val type: String, val name: String, val poster: String?, val background: String?,
         val releaseInfo: String?, val rating: String?, val runtime: String?, val description: String?,
         val genres: List<String>?, val videos: List<Video>?, val imdbId: String?,
+        val logo: String? = null,
     )
     private data class Video(val id: String, val season: Int?, val episode: Int?, val name: String?, val title: String?, val thumbnail: String?, val overview: String?)
     private data class Stream(
@@ -889,11 +974,11 @@ class NativeDetailActivity : AppCompatActivity() {
         const val EXTRA_ID = "cineflow.id"
         const val EXTRA_TYPE = "cineflow.type"
         const val EXTRA_AUTOPLAY = "cineflow.autoplay"
-        private val INK = Color.rgb(7, 8, 11)
-        private val CARD = Color.rgb(18, 20, 26)
+        private val INK = Color.rgb(5, 5, 7)
+        private val CARD = Color.rgb(18, 18, 20)
         private val BORDER = Color.rgb(48, 51, 60)
-        private val CREAM = Color.rgb(242, 235, 221)
-        private val CORAL = Color.rgb(255, 77, 61)
+        private val CREAM = Color.rgb(245, 245, 247)
+        private val CORAL = Color.rgb(245, 245, 247)
         private val MINT = Color.rgb(145, 227, 207)
     }
 }

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -44,6 +43,15 @@ class NativeHomeActivity : AppCompatActivity() {
     private lateinit var heroMore: TextView
     private lateinit var heroImage: ImageView
     private lateinit var heroTitle: TextView
+    private lateinit var heroLogo: ImageView
+    private lateinit var heroBadges: LinearLayout
+    private lateinit var heroDots: LinearLayout
+    private lateinit var heroKicker: TextView
+    private lateinit var heroText: LinearLayout
+    private var heroTransitioning = false
+    private val heroHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var heroItems: List<Meta> = emptyList()
+    private var heroIndex = 0
     private lateinit var heroMeta: TextView
     private lateinit var heroDescription: TextView
     private lateinit var homeRoot: FrameLayout
@@ -61,7 +69,15 @@ class NativeHomeActivity : AppCompatActivity() {
     private var firstRow: RecyclerView? = null
 
     private var renderedProfile: String? = null
-    private var firstCardArmed = false
+    private lateinit var scrim: View
+    private lateinit var breadcrumb: LinearLayout
+    private lateinit var contentRoot: View
+    private lateinit var homeScroll: ScrollView
+    private var railOpen = false
+    private val railHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val railHide = Runnable {
+        if (railOpen && !railHasFocus()) closeRail()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,26 +120,42 @@ class NativeHomeActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_BACK && railOpen) {
+            closeRail()
+            return true
+        }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_BACK && loadingOverlay != null) {
             homeRoot.removeView(loadingOverlay)
             loadingOverlay = null
             loadingStatus = null
             return true
         }
-        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode != android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
-            firstCardArmed = false
-        }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+            if (railOpen) return false
             if (currentFocus === heroMore) {
                 heroPlay.requestFocus()
+                return true
+            }
+            if (currentFocus === heroPlay) {
+                openRail()
                 return true
             }
             if (moveLeftInsideRow(currentFocus)) return true
             return true
         }
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+            if (railOpen && railHasFocus()) {
+                closeRail()
+                return true
+            }
+        }
         if (event.action == android.view.KeyEvent.ACTION_DOWN &&
             (event.keyCode == android.view.KeyEvent.KEYCODE_MENU || event.keyCode == android.view.KeyEvent.KEYCODE_SETTINGS)
         ) {
+            if (railOpen) {
+                closeRail()
+                return true
+            }
             var view: View? = currentFocus
             while (view != null) {
                 val meta = view.tag as? Meta
@@ -133,9 +165,7 @@ class NativeHomeActivity : AppCompatActivity() {
                 }
                 view = view.parent as? View
             }
-            // The 3-bar button is also the explicit way into the side menu, so Left can stay
-            // inside the rows without ever trapping the user away from Inicio/Explorar/Addons.
-            railRows.firstOrNull()?.requestFocus() ?: rail?.getChildAt(0)?.requestFocus()
+            openRail()
             return true
         }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && event.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
@@ -156,58 +186,160 @@ class NativeHomeActivity : AppCompatActivity() {
     private fun buildUi(): View {
         val root = FrameLayout(this).apply { setBackgroundColor(INK) }
         homeRoot = root
-        val shell = LinearLayout(this).apply {
+
+        // Full-width content. The rail floats above it and hides when not needed.
+        contentRoot = buildContent()
+        root.addView(contentRoot, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+
+        breadcrumb = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), dp(4), dp(11), dp(4))
+            background = rounded(0xCC141416.toInt(), 20, 0x24FFFFFF, 1)
+            elevation = dp(10).toFloat()
+            isClickable = true
+            isFocusable = false
+            setOnClickListener { openRail() }
         }
+        breadcrumb.addView(TextView(this).apply {
+            text = "‹"
+            setTextColor(Color.rgb(235,235,238))
+            textSize = 14f
+            setPadding(0, 0, dp(5), 0)
+        })
+        breadcrumb.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_cf_home)
+            setColorFilter(Color.rgb(235,235,238))
+            layoutParams = LinearLayout.LayoutParams(dp(12), dp(12)).apply { rightMargin = dp(5) }
+        })
+        breadcrumb.addView(TextView(this).apply {
+            text = "Inicio"
+            setTextColor(Color.rgb(235,235,238))
+            textSize = 11f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        })
+        root.addView(breadcrumb, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT).apply {
+            leftMargin = dp(22)
+            topMargin = dp(22)
+            gravity = Gravity.TOP or Gravity.START
+        })
+
+        scrim = View(this).apply {
+            setBackgroundColor(0xA6000000.toInt())
+            alpha = 0f
+            visibility = View.GONE
+            isClickable = true
+            setOnClickListener { closeRail() }
+        }
+        root.addView(scrim, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+
         rail = buildRail()
-        shell.addView(rail, LinearLayout.LayoutParams(dp(194), ViewGroup.LayoutParams.MATCH_PARENT))
-        shell.addView(buildContent(), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
-        root.addView(shell, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        rail.visibility = View.GONE
+        rail.alpha = 0f
+        rail.scaleX = 0.96f
+        rail.scaleY = 0.96f
+        root.addView(rail, FrameLayout.LayoutParams(
+            dp(180), FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START).apply {
+            leftMargin = dp(24)
+            topMargin = dp(20)
+        })
         return root
+    }
+
+    private fun railHasFocus(): Boolean {
+        var v = currentFocus ?: return false
+        while (v is View) {
+            if (v === rail) return true
+            v = v.parent as? View ?: return false
+        }
+        return false
+    }
+
+    private fun openRail() {
+        if (railOpen) {
+            railRows.firstOrNull()?.requestFocus()
+            return
+        }
+        railOpen = true
+        railHandler.removeCallbacks(railHide)
+        val blurred = BlurGlass.capture(this, contentRoot, 25f)
+        if (blurred != null) {
+            val glass = androidx.core.graphics.drawable.RoundedBitmapDrawableFactory.create(resources, blurred)
+            glass.cornerRadius = dp(20).toFloat()
+            glass.setAntiAlias(true)
+            glass.alpha = 38
+            val base = rounded(0xED161618.toInt(), 20, 0x24FFFFFF, 1)
+            val shade = rounded(0x99000000.toInt(), 20, Color.TRANSPARENT, 0)
+            rail.background = android.graphics.drawable.LayerDrawable(arrayOf(base, glass, shade))
+        }
+        rail.visibility = View.VISIBLE
+        rail.translationX = -dp(220).toFloat()
+        rail.scaleX = 0.96f
+        rail.scaleY = 0.96f
+        rail.animate().translationX(0f).scaleX(1f).scaleY(1f).alpha(1f)
+            .setDuration(240L)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .start()
+        breadcrumb.animate().alpha(0f).setDuration(160L).start()
+        scrim.visibility = View.VISIBLE
+        scrim.animate().alpha(1f).setDuration(260L).start()
+        (railRows.getOrNull(1) ?: railRows.firstOrNull())?.requestFocus()
+        railHandler.postDelayed(railHide, 6000L)
+    }
+
+    private fun closeRail() {
+        if (!railOpen) return
+        railOpen = false
+        railHandler.removeCallbacks(railHide)
+        rail.animate().translationX(-dp(220).toFloat()).scaleX(0.96f).scaleY(0.96f).alpha(0f)
+            .setDuration(200L)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
+            .withEndAction {
+                if (!railOpen) {
+                    rail.visibility = View.GONE
+                    heroPlay.requestFocus()
+                }
+            }.start()
+        breadcrumb.animate().alpha(1f).setDuration(220L).start()
+        breadcrumb.isClickable = true
+        scrim.animate().alpha(0f).setDuration(220L)
+            .withEndAction { if (!railOpen) scrim.visibility = View.GONE }.start()
+        heroPlay.requestFocus()
+        railHandler.postDelayed({ if (!railOpen) heroPlay.requestFocus() }, 260L)
     }
 
     private fun buildRail(): LinearLayout {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(RAIL)
-            setPadding(dp(22), dp(20), dp(18), dp(12))
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            clipChildren = false
+            clipToPadding = false
+            background = GradientDrawable().apply {
+                setColor(0xF21A1A1C.toInt())
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), 0x2EFFFFFF)
+            }
+            elevation = dp(20).toFloat()
         }
-        val mark = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        mark.addView(TextView(this).apply {
-            text = "CINE"
-            setTextColor(CREAM)
-            textSize = 21f
-            letterSpacing = .16f
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            includeFontPadding = false
-        })
-        mark.addView(TextView(this).apply {
-            text = "FLOW"
-            setTextColor(CORAL)
-            textSize = 21f
-            letterSpacing = .16f
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            includeFontPadding = false
-        })
-        box.addView(mark)
-        box.addView(View(this), LinearLayout.LayoutParams(1, dp(20)))
-        box.addView(railLine())
-        box.addView(navItem(R.drawable.ic_cf_home, "Inicio", true) { /* already here */ })
-        box.addView(navItem(R.drawable.ic_cf_compass, "Explorar", false) { startActivity(Intent(this, NativeSearchActivity::class.java)) })
-        box.addView(railSection("EN DIRECTO"))
-        box.addView(navItem(R.drawable.ic_cf_live, "Canales", false) { startActivity(Intent(this, ChannelsActivity::class.java)) })
-        box.addView(navItem(R.drawable.ic_cf_guide, "Guía", false) { startActivity(Intent(this, GuideActivity::class.java)) })
-        box.addView(railSection("TU CUENTA"))
-        box.addView(navItem(R.drawable.ic_cf_library, "Biblioteca", false) { startActivity(Intent(this, NativeLibraryActivity::class.java)) })
-        box.addView(navItem(R.drawable.ic_cf_addons, "Addons", false) { startActivity(Intent(this, NativeAddonsActivity::class.java)) })
-        box.addView(navItem(R.drawable.ic_cf_account, "Cuenta", false) { startActivity(Intent(this, NativeAccountActivity::class.java)) })
-        box.addView(navItem(R.drawable.ic_cf_settings, "Ajustes", false) { startActivity(Intent(this, NativeSettingsActivity::class.java)) })
-        box.addView(View(this), LinearLayout.LayoutParams(1, 0, 1f))
-        box.addView(railLine())
-        // Logo only, by request. The edition mark is intentionally left out.
+        fun item(icon: Int, label: String, action: () -> Unit) {
+            box.addView(navItem(icon, label, false, action))
+        }
+        item(R.drawable.ic_cf_search_outline, "Buscar") { startActivity(Intent(this, SearchActivity::class.java)) }
+        item(R.drawable.ic_cf_home_outline, "Inicio") { /* already here */ }
+        item(R.drawable.ic_cf_series_outline, "Series") {
+            startActivity(Intent(this, CatalogActivity::class.java).putExtra(CatalogActivity.EXTRA_TYPE, "series"))
+        }
+        item(R.drawable.ic_cf_film_outline, "Películas") {
+            startActivity(Intent(this, CatalogActivity::class.java).putExtra(CatalogActivity.EXTRA_TYPE, "movie"))
+        }
+        item(R.drawable.ic_cf_live_outline, "TV") { startActivity(Intent(this, ChannelsActivity::class.java)) }
+        item(R.drawable.ic_cf_library_outline, "Biblioteca") { startActivity(Intent(this, NativeLibraryActivity::class.java)) }
+        item(R.drawable.ic_cf_settings_outline, "Ajustes") { startActivity(Intent(this, NativeSettingsActivity::class.java)) }
         return box
     }
-
 
     private fun railSection(text: String): TextView = TextView(this).apply {
         this.text = text
@@ -221,33 +353,42 @@ class NativeHomeActivity : AppCompatActivity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), 0, dp(8), 0)
+            setPadding(dp(12), 0, dp(8), 0)
             isFocusable = true
             isFocusableInTouchMode = true
             isClickable = true
-            background = navBackground(selected)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(34)).apply { bottomMargin = dp(3) }
-            setOnClickListener { action() }
+            background = navBackground(false)
+            clipChildren = false
+            clipToPadding = false
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(38)).apply { bottomMargin = dp(1) }
+            setOnClickListener { closeRail(); action() }
         }
         val icon = ImageView(this).apply {
             setImageResource(iconRes)
-            setColorFilter(if (selected) CREAM else Color.rgb(166,170,180))
-            layoutParams = LinearLayout.LayoutParams(dp(17), dp(17)).apply { rightMargin = dp(11) }
+            setColorFilter(CREAM)
+            layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { rightMargin = dp(12) }
         }
         val text = TextView(this).apply {
             this.text = label
-            setTextColor(if (selected) CREAM else Color.rgb(180,183,192))
-            textSize = 10.5f
-            letterSpacing = .03f
-            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(CREAM)
+            textSize = 12.5f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
             gravity = Gravity.CENTER_VERTICAL
         }
         row.addView(icon)
         row.addView(text)
         row.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-            v.background = navBackground(selected, has)
-            text.setTextColor(if (has) Color.WHITE else if (selected) CREAM else Color.rgb(180,183,192))
-            icon.setColorFilter(if (has) CORAL else if (selected) CREAM else Color.rgb(166,170,180))
+            v.background = navBackground(has)
+            text.setTextColor(if (has) Color.rgb(10,10,12) else CREAM)
+            icon.setColorFilter(if (has) Color.rgb(10,10,12) else CREAM)
+            v.animate().scaleX(1f).scaleY(1f).setDuration(1L).start()
+            if (has) {
+                railHandler.removeCallbacks(railHide)
+            } else if (railOpen) {
+                railHandler.postDelayed({
+                    if (railOpen && !railHasFocus()) closeRail()
+                }, 220L)
+            }
         }
         railRows += row
         return row
@@ -260,6 +401,7 @@ class NativeHomeActivity : AppCompatActivity() {
 
     private fun buildContent(): ScrollView {
         val scroll = ScrollView(this).apply {
+            homeScroll = this
             isFillViewport = true
             overScrollMode = View.OVER_SCROLL_NEVER
             isFocusable = false
@@ -267,20 +409,12 @@ class NativeHomeActivity : AppCompatActivity() {
         }
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(32), dp(22), dp(32), dp(30))
+            setPadding(0, 0, 0, dp(34))
         }
-        col.addView(TextView(this).apply {
-            text = "SELECCIÓN DE HOY"
-            setTextColor(Color.rgb(132,136,146))
-            textSize = 8f
-            letterSpacing = .2f
-            setPadding(0, 0, 0, dp(10))
-        })
         val hero = FrameLayout(this).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(286))
-            background = rounded(CARD, 18, Color.TRANSPARENT, 0)
-            clipToOutline = true
-            outlineProvider = roundedOutline(dp(18))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(370))
+            background = GradientDrawable().apply { setColor(Color.TRANSPARENT) }
+            clipChildren = false
         }
         heroImage = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -288,44 +422,67 @@ class NativeHomeActivity : AppCompatActivity() {
         }
         hero.addView(heroImage)
         hero.addView(View(this).apply {
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0x22000000, 0x22000000, 0xF207080B.toInt()))
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0x55000000, 0x33000000, 0xF207080B.toInt()))
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
         })
-        val heroText = LinearLayout(this).apply {
+        heroText = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(18), dp(24), dp(18))
+            setPadding(dp(80), dp(24), dp(80), dp(38))
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
         }
-        heroText.addView(TextView(this).apply {
-            text = "DESTACADO"
-            setTextColor(CORAL)
-            textSize = 8f
-            letterSpacing = .22f
-            typeface = Typeface.DEFAULT_BOLD
-        })
         heroTitle = TextView(this).apply {
             text = "Cargando…"
-            setTextColor(CREAM)
-            textSize = 34f
+            setTextColor(Color.WHITE)
+            textSize = 44f
             maxLines = 2
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            letterSpacing = -0.02f
             includeFontPadding = false
-            setPadding(0, dp(4), 0, dp(5))
+            setPadding(0, dp(6), 0, dp(8))
         }
+        heroKicker = TextView(this).apply {
+            text = "RECIÉN AÑADIDO"
+            setTextColor(Color.rgb(215,215,220))
+            textSize = 10f
+            letterSpacing = .08f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setPadding(0, 0, 0, dp(9))
+        }
+        heroText.addView(heroKicker)
+        heroLogo = ImageView(this).apply {
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_START
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(112)).apply { bottomMargin = dp(2) }
+            maxWidth = dp(700)
+            maxHeight = dp(100)
+        }
+        heroText.addView(heroLogo)
         heroText.addView(heroTitle)
+        heroBadges = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(4), 0, dp(8))
+        }
+        heroText.addView(heroBadges)
         heroMeta = TextView(this).apply {
             text = ""
-            setTextColor(Color.rgb(190,195,202))
-            textSize = 10f
-            letterSpacing = .05f
+            setTextColor(Color.rgb(220,220,225))
+            textSize = 12.5f
+            letterSpacing = .01f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            visibility = View.GONE
         }
         heroText.addView(heroMeta)
         heroDescription = TextView(this).apply {
             text = ""
-            setTextColor(Color.rgb(170,174,183))
-            textSize = 11f
+            setTextColor(Color.rgb(205,205,210))
+            textSize = 14f
             maxLines = 3
-            setPadding(0, dp(7), 0, dp(11))
+            setLineSpacing(dp(2).toFloat(), 1f)
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            setPadding(0, dp(10), 0, dp(16))
         }
         heroText.addView(heroDescription)
         val actions = LinearLayout(this).apply {
@@ -334,7 +491,7 @@ class NativeHomeActivity : AppCompatActivity() {
             clipChildren = false
             clipToPadding = false
         }
-        heroPlay = pill("▶   VER AHORA", true)
+        heroPlay = pill("▶   Reproducir", true)
         heroPlay.id = View.generateViewId()
         heroPlay.setOnClickListener { openDetail(currentHero) }
         heroPlay.setOnKeyListener { _, keyCode, event ->
@@ -352,7 +509,7 @@ class NativeHomeActivity : AppCompatActivity() {
             }
             false
         }
-        val more = pill("MÁS INFORMACIÓN", false)
+        val more = pill("Más información", false)
         heroMore = more
         more.id = View.generateViewId()
         more.setOnClickListener { openDetail(currentHero) }
@@ -364,18 +521,135 @@ class NativeHomeActivity : AppCompatActivity() {
                 true
             } else false
         }
-        actions.addView(heroPlay, LinearLayout.LayoutParams(dp(170), dp(38)).apply { rightMargin = dp(8) })
-        actions.addView(more, LinearLayout.LayoutParams(dp(160), dp(38)))
+        actions.addView(heroPlay, LinearLayout.LayoutParams(dp(170), dp(40)).apply { rightMargin = dp(9) })
+        actions.addView(more, LinearLayout.LayoutParams(dp(160), dp(40)))
         heroText.addView(actions)
         hero.addView(heroText)
+        heroDots = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM or Gravity.END).apply {
+                rightMargin = dp(44)
+                bottomMargin = dp(24)
+            }
+        }
+        repeat(5) { index ->
+            heroDots.addView(View(this).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(if (index == 0) Color.WHITE else 0x66FFFFFF)
+                }
+                layoutParams = LinearLayout.LayoutParams(dp(6), dp(6)).apply {
+                    leftMargin = dp(4)
+                    rightMargin = dp(4)
+                }
+            })
+        }
+        hero.addView(heroDots)
         col.addView(hero)
         rows = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(15), 0, 0)
+            setPadding(dp(80), dp(18), dp(80), 0)
         }
         col.addView(rows)
         scroll.addView(col)
         return scroll
+    }
+
+    private fun showHero(feature: Meta, animate: Boolean = true) {
+        if (!animate || currentHero == null || heroTransitioning) {
+            applyHero(feature)
+            return
+        }
+        heroTransitioning = true
+        heroImage.animate().alpha(0f).setDuration(220L).start()
+        heroText.animate().alpha(0f).translationY(dp(10).toFloat()).setDuration(200L).withEndAction {
+            applyHero(feature)
+            heroText.alpha = 0f
+            heroText.translationY = dp(10).toFloat()
+            heroText.animate().alpha(1f).translationY(0f).setDuration(340L).start()
+            heroImage.alpha = 0f
+            heroImage.animate().alpha(1f).setDuration(460L).setStartDelay(180L).start()
+            heroTransitioning = false
+        }.start()
+    }
+
+    private fun applyHero(feature: Meta) {
+        currentHero = feature
+        heroTitle.text = feature.name
+        if (heroIndex == 0 && !feature.logo.isNullOrBlank() && !feature.name.startsWith("The ", true) && !feature.name.startsWith("A ", true)) {
+            heroLogo.visibility = View.VISIBLE
+            heroTitle.visibility = View.GONE
+            NativeImageLoader.load(heroLogo, feature.logo, 2, "original")
+        } else {
+            heroLogo.visibility = View.GONE
+            heroTitle.visibility = View.VISIBLE
+            loadHeroLogo(feature)
+        }
+        heroMeta.text = ""
+        heroBadges.removeAllViews()
+        fun addHeroBadge(value: String?) {
+            if (value.isNullOrBlank()) return
+            heroBadges.addView(TextView(this).apply {
+                text = value
+                setTextColor(Color.rgb(240,240,244))
+                textSize = 9.5f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setPadding(dp(7), dp(3), dp(7), dp(3))
+                background = rounded(0x33FFFFFF, 4, 0x66FFFFFF, 1)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(6) }
+            })
+        }
+        addHeroBadge(feature.releaseInfo)
+        addHeroBadge(feature.rating?.let { "★ $it" })
+        feature.genres?.take(3)?.forEach { addHeroBadge(it) }
+        heroDescription.text = feature.description.orEmpty()
+        NativeImageLoader.load(heroImage, feature.background ?: feature.poster, 2, "original")
+        if (heroText.alpha > 0f) heroImage.alpha = 1f
+        for (i in 0 until heroDots.childCount) {
+            val dot = heroDots.getChildAt(i)
+            (dot.background as? GradientDrawable)?.setColor(if (i == heroIndex % 5) Color.WHITE else 0x66FFFFFF)
+        }
+    }
+
+    private fun startHeroRotation() {
+        heroHandler.removeCallbacksAndMessages(null)
+        if (heroItems.size <= 1) return
+        val tick = object : Runnable {
+            override fun run() {
+                if (isFinishing || isDestroyed) return
+                if (!railOpen && !heroTransitioning && heroItems.isNotEmpty()) {
+                    heroIndex = (heroIndex + 1) % heroItems.size
+                    showHero(heroItems[heroIndex])
+                }
+                heroHandler.postDelayed(this, 8000L)
+            }
+        }
+        heroHandler.postDelayed(tick, 8000L)
+    }
+
+    override fun onDestroy() {
+        heroHandler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    private fun loadHeroLogo(feature: Meta) {
+        if (!feature.logo.isNullOrBlank()) return
+        if (heroIndex != 0) return
+        if (feature.name.startsWith("The ", true) || feature.name.startsWith("A ", true)) return
+        thread(name = "cineflow-hero-logo", isDaemon = true) {
+            val json = StremioSession.metaJson(this, feature.type, feature.id) ?: return@thread
+            val logo = json.optString("logo").takeIf { it.isNotBlank() } ?: return@thread
+            runOnUiThread {
+                if (isFinishing || isDestroyed || currentHero?.id != feature.id) return@runOnUiThread
+                heroLogo.visibility = View.VISIBLE
+                heroTitle.visibility = View.GONE
+                NativeImageLoader.load(heroLogo, logo, 2, "original")
+            }
+        }
     }
 
     private fun render(
@@ -386,18 +660,10 @@ class NativeHomeActivity : AppCompatActivity() {
         extraCatalogs: List<ExtraRow> = emptyList(),
     ) {
         if (isFinishing || isDestroyed) return
-        val feature = movies.firstOrNull() ?: series.firstOrNull()
-        currentHero = feature
-        if (feature != null) {
-            heroTitle.text = feature.name
-            heroMeta.text = listOfNotNull(
-                feature.releaseInfo?.takeIf { it.isNotBlank() },
-                feature.rating?.let { "★ $it" },
-                feature.genres?.take(2)?.joinToString("  ·  "),
-            ).joinToString("     ")
-            heroDescription.text = feature.description.orEmpty()
-            NativeImageLoader.load(heroImage, feature.background ?: feature.poster, 2)
-        }
+        heroItems = (movies + films + series).distinctBy { it.id }.take(8)
+        heroIndex = 0
+        heroItems.firstOrNull()?.let { showHero(it, animate = false) }
+        startHeroRotation()
         rows.removeAllViews()
         firstRow = null
         val local = NativeProgressStore.list(this)
@@ -432,15 +698,6 @@ class NativeHomeActivity : AppCompatActivity() {
         for (row in extraCatalogs) {
             if (row.items.isNotEmpty()) rows.addView(section("", row.title.uppercase(Locale.ROOT), row.items, row.type))
         }
-        rows.addView(buildDiscovery())
-        rows.addView(buildLive())
-        rows.addView(TextView(this).apply {
-            text = "CINEFLOW · UNA EXPERIENCIA PROPIA"
-            setTextColor(Color.rgb(92,96,106))
-            textSize = 7f
-            letterSpacing = .18f
-            setPadding(0, dp(22), 0, 0)
-        })
         heroPlay.post { heroPlay.requestFocus() }
         for (row in railRows) row.setNextFocusRightId(heroPlay.id)
     }
@@ -459,16 +716,7 @@ class NativeHomeActivity : AppCompatActivity() {
                 val position = parent.getChildAdapterPosition(card)
                 if (position <= 0) {
                     parent.scrollToPosition(0)
-                    if (firstCardArmed) {
-                        // A second deliberate Left at the start of the row goes to the rail.
-                        firstCardArmed = false
-                        railRows.firstOrNull()?.requestFocus()
-                            ?: rail?.getChildAt(0)?.requestFocus()
-                    } else {
-                        // First Left at the start stays on the card and arms the next one.
-                        firstCardArmed = true
-                        card.requestFocus()
-                    }
+                    openRail()
                     return true
                 }
                 // Always scroll the previous card into view first. Focusing a card that is
@@ -478,8 +726,6 @@ class NativeHomeActivity : AppCompatActivity() {
                 parent.requestFocus()
                 parent.scrollToPosition(position - 1)
                 focusHolderAfterScroll(parent, position - 1, 0)
-                // Arming happens only when this Left actually lands on the first card.
-                firstCardArmed = position == 1
                 return true
             }
             card = parent
@@ -563,7 +809,7 @@ class NativeHomeActivity : AppCompatActivity() {
             text = meta.name
             setTextColor(CREAM)
             textSize = 19f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, dp(4), 0, dp(14))
         })
         fun option(icon: String, title: String, subtitle: String, action: () -> Unit): TextView {
@@ -630,53 +876,32 @@ class NativeHomeActivity : AppCompatActivity() {
         val head = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(15), 0, dp(8))
+            setPadding(0, dp(18), 0, dp(10))
         }
-        head.addView(ImageView(this).apply {
-            setImageResource(
-                when {
-                    title.contains("CONTINUAR", ignoreCase = true) -> R.drawable.ic_cf_history
-                    title.contains("TENDENCIA", ignoreCase = true) -> R.drawable.ic_cf_flame
-                    type == "series" -> R.drawable.ic_cf_series
-                    else -> R.drawable.ic_cf_film
-                }
-            )
-            setColorFilter(CORAL)
-            layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { rightMargin = dp(10) }
-        })
         head.addView(TextView(this).apply {
-            text = title
-            setTextColor(CREAM)
-            textSize = 11f
-            letterSpacing = .12f
-            typeface = Typeface.DEFAULT_BOLD
+            val locale = Locale.forLanguageTag("es-ES")
+            text = title.lowercase(locale).replaceFirstChar { it.titlecase(locale) }
+            setTextColor(Color.WHITE)
+            textSize = 19f
+            letterSpacing = 0f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         val verTodoId = View.generateViewId()
-        head.addView(TextView(this).apply {
-            text = "VER TODO  →"
-            id = verTodoId
-            setTextColor(CREAM)
-            textSize = 8f
-            letterSpacing = .08f
-            setPadding(dp(12), dp(6), dp(12), dp(6))
-            isFocusable = true
-            isFocusableInTouchMode = true
-            isClickable = true
-            background = rounded(Color.rgb(20,22,28), 8, Color.rgb(60,63,74), 1)
-            setOnClickListener { startActivity(Intent(this@NativeHomeActivity, NativeSearchActivity::class.java)) }
-            onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                v.background = rounded(if (has) Color.WHITE else Color.rgb(20,22,28), 8,
-                    if (has) Color.WHITE else Color.rgb(60,63,74), if (has) 2 else 1)
-                (v as TextView).setTextColor(if (has) Color.rgb(12,13,16) else CREAM)
-                v.animate().scaleX(if (has) 1.05f else 1f).scaleY(if (has) 1.05f else 1f).setDuration(120).start()
-            }
-        })
+        val seeAll = when {
+            title.contains("TENDENCIA", true) ->
+                Intent(this, SearchActivity::class.java).putExtra(SearchActivity.EXTRA_FILTER, "Tendencias")
+            type == "movie" && title.contains("PELÍCULA", true) ->
+                Intent(this, CatalogActivity::class.java).putExtra(CatalogActivity.EXTRA_TYPE, "movie")
+            type == "series" ->
+                Intent(this, CatalogActivity::class.java).putExtra(CatalogActivity.EXTRA_TYPE, "series")
+            else -> Intent(this, SearchActivity::class.java)
+        }
         box.addView(head)
         val rv = RecyclerView(this).apply {
             id = View.generateViewId()
             layoutManager = LinearLayoutManager(this@NativeHomeActivity, LinearLayoutManager.HORIZONTAL, false)
-            adapter = CardAdapter(list, type, autoResume, verTodoId)
+            adapter = CardAdapter(list, type, autoResume, verTodoId, seeAll)
             if (firstRow == null) firstRow = this
             isFocusable = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -685,7 +910,7 @@ class NativeHomeActivity : AppCompatActivity() {
             clipToPadding = false
             clipChildren = false
             setPadding(dp(8), dp(6), dp(28), dp(6))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(172))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(170))
         }
         box.addView(rv)
         return box
@@ -699,7 +924,10 @@ class NativeHomeActivity : AppCompatActivity() {
             setColorFilter(CORAL)
             layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { rightMargin = dp(10) }
         })
-        head.addView(TextView(this).apply { text = "EN DIRECTO"; setTextColor(CREAM); textSize = 11f; letterSpacing = .12f; typeface = Typeface.DEFAULT_BOLD })
+        head.addView(TextView(this).apply {
+            text = "En directo"; setTextColor(Color.WHITE); textSize = 19f; letterSpacing = 0f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        })
         box.addView(head)
         val cards = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         cards.addView(liveCard("CANALES", "759 señales · AceStream", CORAL) { startActivity(Intent(this, ChannelsActivity::class.java)) }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { rightMargin = dp(10) })
@@ -716,7 +944,10 @@ class NativeHomeActivity : AppCompatActivity() {
             setColorFilter(CORAL)
             layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { rightMargin = dp(10) }
         })
-        head.addView(TextView(this).apply { text = "DESCUBRIR"; setTextColor(CREAM); textSize = 11f; letterSpacing = .12f; typeface = Typeface.DEFAULT_BOLD })
+        head.addView(TextView(this).apply {
+            text = "Descubrir"; setTextColor(Color.WHITE); textSize = 19f; letterSpacing = 0f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        })
         box.addView(head)
         val cards = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         cards.addView(liveCard("COLECCIONES", "Acción · Comedia · Drama · Terror", CORAL) {
@@ -753,19 +984,22 @@ class NativeHomeActivity : AppCompatActivity() {
 
     private fun pill(text: String, filled: Boolean): TextView = TextView(this).apply {
         this.text = text
-        setTextColor(if (filled) Color.rgb(12,13,16) else CREAM)
-        textSize = 8f
-        letterSpacing = .1f
-        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(if (filled) Color.rgb(10,10,12) else Color.WHITE)
+        textSize = 13f
+        letterSpacing = 0f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         gravity = Gravity.CENTER
         isFocusable = true
         isFocusableInTouchMode = true
         isClickable = true
-        background = if (filled) rounded(CORAL, 9, Color.TRANSPARENT, 0) else rounded(Color.rgb(20,22,28), 9, Color.rgb(80,84,94), 1)
+        background = if (filled) rounded(Color.rgb(245,245,247), 23, Color.TRANSPARENT, 0)
+        else rounded(0x99424244.toInt(), 23, 0x44FFFFFF, 1)
         setOnFocusChangeListener { v, has ->
-            v.background = if (filled) rounded(if (has) Color.WHITE else CORAL, 9, Color.TRANSPARENT, 0)
-            else rounded(if (has) Color.rgb(44,47,56) else Color.rgb(20,22,28), 9, if (has) CREAM else Color.rgb(80,84,94), if (has) 2 else 1)
-            v.animate().scaleX(if (has) 1.04f else 1f).scaleY(if (has) 1.04f else 1f).setDuration(120).start()
+            v.background = if (filled) rounded(Color.WHITE, 23, Color.TRANSPARENT, 0)
+            else rounded(if (has) Color.rgb(245,245,247) else 0x99424244.toInt(), 23,
+                if (has) Color.TRANSPARENT else 0x44FFFFFF, if (has) 0 else 1)
+            (v as TextView).setTextColor(if (has) Color.rgb(10,10,12) else if (filled) Color.rgb(10,10,12) else Color.WHITE)
+            v.animate().scaleX(if (has) 1.03f else 1f).scaleY(if (has) 1.03f else 1f).setDuration(110L).start()
         }
     }
 
@@ -774,10 +1008,48 @@ class NativeHomeActivity : AppCompatActivity() {
         private val fallbackType: String,
         private val autoResume: Boolean = false,
         private val upFocusId: Int = View.NO_ID,
-    ) : RecyclerView.Adapter<CardAdapter.Holder>() {
-        inner class Holder(val card: LinearLayout, val frame: FrameLayout, val image: ImageView, val name: TextView, val sub: TextView, val description: TextView) : RecyclerView.ViewHolder(card)
+        private val seeAllIntent: Intent? = null,
+    ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        inner class Holder(val card: LinearLayout, val frame: FrameLayout, val image: ImageView, val name: TextView, val sub: TextView, val description: TextView, val progress: View) : RecyclerView.ViewHolder(card)
+        inner class ArrowHolder(val card: FrameLayout) : RecyclerView.ViewHolder(card)
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        override fun getItemCount(): Int = items.size + 1
+        override fun getItemViewType(position: Int): Int = if (position == items.size) 1 else 0
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            if (viewType == 1) {
+                val wrap = FrameLayout(this@NativeHomeActivity).apply {
+                    id = upFocusId
+                    nextFocusRightId = id
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    isClickable = true
+                    clipChildren = false
+                    clipToPadding = false
+                    layoutParams = RecyclerView.LayoutParams(dp(96), dp(155)).apply { rightMargin = dp(8) }
+                }
+                val circle = TextView(this@NativeHomeActivity).apply {
+                    text = "›"
+                    setTextColor(Color.WHITE)
+                    textSize = 30f
+                    gravity = Gravity.CENTER
+                    background = rounded(0x33FFFFFF, 28, 0x44FFFFFF, 1)
+                    layoutParams = FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER)
+                }
+                wrap.addView(circle)
+                wrap.setOnClickListener {
+                    startActivity(seeAllIntent ?: Intent(this@NativeHomeActivity, SearchActivity::class.java))
+                }
+                wrap.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                    v.background = null
+                    circle.background = rounded(if (has) Color.WHITE else 0x33FFFFFF, 28,
+                        if (has) Color.TRANSPARENT else 0x44FFFFFF, if (has) 0 else 1)
+                    circle.setTextColor(if (has) Color.rgb(10,10,12) else Color.WHITE)
+                    v.animate().scaleX(if (has) 1.06f else 1f).scaleY(if (has) 1.06f else 1f)
+                        .setDuration(180L).setInterpolator(android.view.animation.OvershootInterpolator(0.3f)).start()
+                }
+                return ArrowHolder(wrap)
+            }
             val card = LinearLayout(this@NativeHomeActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 id = View.generateViewId()
@@ -785,10 +1057,12 @@ class NativeHomeActivity : AppCompatActivity() {
                 isFocusable = true
                 isFocusableInTouchMode = true
                 setPadding(dp(2), dp(2), dp(2), dp(2))
-                layoutParams = RecyclerView.LayoutParams(dp(218), dp(158)).apply { rightMargin = dp(10) }
+                clipChildren = false
+                clipToPadding = false
+                layoutParams = RecyclerView.LayoutParams(dp(180), dp(155)).apply { rightMargin = dp(8) }
             }
             val frame = FrameLayout(this@NativeHomeActivity).apply {
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(118))
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(110))
                 background = rounded(Color.TRANSPARENT, 13, Color.TRANSPARENT, 0)
                 clipToOutline = true
                 outlineProvider = roundedOutline(dp(13))
@@ -799,7 +1073,7 @@ class NativeHomeActivity : AppCompatActivity() {
             }
             frame.addView(image)
             val description = TextView(this@NativeHomeActivity).apply {
-                setTextColor(Color.rgb(242,235,221))
+                setTextColor(Color.rgb(245,245,247))
                 textSize = 7.8f
                 maxLines = 3
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -809,12 +1083,18 @@ class NativeHomeActivity : AppCompatActivity() {
                 layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
             }
             frame.addView(description)
+            val progress = View(this@NativeHomeActivity).apply {
+                setBackgroundColor(Color.WHITE)
+                visibility = View.GONE
+                layoutParams = FrameLayout.LayoutParams(0, dp(3), Gravity.BOTTOM)
+            }
+            frame.addView(progress)
             val name = TextView(this@NativeHomeActivity).apply {
                 setTextColor(CREAM)
-                textSize = 11f
+                textSize = 13f
                 maxLines = 1
-                typeface = Typeface.DEFAULT_BOLD
-                setPadding(dp(3), dp(6), dp(3), 0)
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setPadding(dp(3), dp(8), dp(3), 0)
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
             val sub = TextView(this@NativeHomeActivity).apply {
@@ -827,41 +1107,59 @@ class NativeHomeActivity : AppCompatActivity() {
             card.addView(frame)
             card.addView(name)
             card.addView(sub)
-            return Holder(card, frame, image, name, sub, description)
+            return Holder(card, frame, image, name, sub, description, progress)
         }
 
-        override fun onBindViewHolder(holder: Holder, position: Int) {
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            if (holder is ArrowHolder || position >= items.size) return
+            val h = holder as Holder
             val meta = items[position]
-            holder.card.tag = if (autoResume) meta else null
+            h.card.tag = if (autoResume) meta else null
             // The first card must keep Left on itself: the framework's default focus search
             // would otherwise land on the side rail (Inicio/Explorar/...).
-            holder.card.nextFocusLeftId = if (position == 0) holder.card.id else View.NO_ID
-            holder.name.text = meta.name
-            holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("   ")
-            holder.description.text = meta.description.orEmpty()
-            holder.description.visibility = View.GONE
-            NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 3)
-            holder.card.background = rounded(Color.TRANSPARENT, 13, Color.TRANSPARENT, 0)
-            holder.card.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                holder.card.background = rounded(if (has) Color.rgb(31,20,21) else Color.TRANSPARENT, 13,
-                    if (has) CORAL else Color.TRANSPARENT, if (has) 2 else 0)
-                holder.description.visibility = if (has && holder.description.text.isNotBlank()) View.VISIBLE else View.GONE
-                holder.name.setTextColor(if (has) Color.WHITE else CREAM)
-                v.animate().scaleX(if (has) 1.04f else 1f).scaleY(if (has) 1.04f else 1f).setDuration(120).start()
+            h.card.nextFocusLeftId = if (position == 0) h.card.id else View.NO_ID
+            h.card.nextFocusRightId = if (position == items.size - 1) upFocusId else View.NO_ID
+            h.name.text = meta.name
+            h.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("   ")
+            h.description.text = meta.description.orEmpty()
+            h.description.visibility = View.GONE
+            h.progress.visibility = View.GONE
+            if (autoResume) {
+                val entry = NativeProgressStore.get(this@NativeHomeActivity, meta.id)
+                if (entry != null && entry.duration > 0L) {
+                    val fraction = (entry.position.toFloat() / entry.duration.toFloat()).coerceIn(0f, 1f)
+                    h.progress.visibility = View.VISIBLE
+                    h.frame.post {
+                        val lp = h.progress.layoutParams as FrameLayout.LayoutParams
+                        lp.width = (h.frame.width * fraction).toInt()
+                        h.progress.layoutParams = lp
+                    }
+                }
+            }
+            NativeImageLoader.load(h.image, MediaArt.poster(meta.id, meta.background ?: meta.poster), 1)
+            h.card.background = rounded(Color.TRANSPARENT, 13, Color.TRANSPARENT, 0)
+            h.card.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
+                h.card.background = rounded(Color.TRANSPARENT, 10,
+                    if (has) Color.WHITE else Color.TRANSPARENT, if (has) 2 else 0)
+                h.name.setTextColor(if (has) Color.WHITE else CREAM)
+                h.description.visibility = if (has && h.description.text.isNotBlank()) View.VISIBLE else View.GONE
+                v.animate().scaleX(if (has) 1.045f else 1f).scaleY(if (has) 1.045f else 1f)
+                    .setDuration(190L)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(0.35f))
+                    .start()
                 if (has) v.bringToFront()
             }
-            holder.card.setOnClickListener {
+            h.card.setOnClickListener {
                 if (autoResume) playContinue(meta) else openDetail(meta, fallbackType)
             }
             if (autoResume) {
-                installLongPress(holder.card) { askRemoveFromContinue(meta) }
+                installLongPress(h.card) { askRemoveFromContinue(meta) }
             } else {
-                holder.card.setOnLongClickListener(null)
-                holder.card.setOnKeyListener(null)
+                h.card.setOnLongClickListener(null)
+                h.card.setOnKeyListener(null)
             }
         }
 
-        override fun getItemCount(): Int = items.size
     }
 
 
@@ -992,6 +1290,7 @@ class NativeHomeActivity : AppCompatActivity() {
                     rating = o.optString("imdbRating").takeIf { it.isNotBlank() },
                     description = o.optString("description").takeIf { it.isNotBlank() },
                     genres = o.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
+                    logo = o.optString("logo").takeIf { it.isNotBlank() },
                 )
             }
             parsed
@@ -1022,6 +1321,7 @@ class NativeHomeActivity : AppCompatActivity() {
                     rating = o.optString("imdbRating").takeIf { it.isNotBlank() },
                     description = o.optString("description").takeIf { it.isNotBlank() },
                     genres = o.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } },
+                    logo = o.optString("logo").takeIf { it.isNotBlank() },
                 )
             }
             parsed
@@ -1040,6 +1340,7 @@ class NativeHomeActivity : AppCompatActivity() {
         val rating: String?,
         val description: String?,
         val genres: List<String>?,
+        val logo: String? = null,
     )
 
     private fun rounded(color: Int, radius: Int, stroke: Int, strokeWidth: Int): GradientDrawable = GradientDrawable().apply {
@@ -1055,10 +1356,8 @@ class NativeHomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun navBackground(selected: Boolean, focused: Boolean = false): StateListDrawable = StateListDrawable().apply {
-        addState(intArrayOf(android.R.attr.state_focused), rounded(Color.rgb(29,32,40), 8, CORAL, 1))
-        addState(intArrayOf(), if (selected) rounded(Color.rgb(24,26,33), 8, Color.TRANSPARENT, 0) else rounded(Color.TRANSPARENT, 8, Color.TRANSPARENT, 0))
-    }
+    private fun navBackground(focused: Boolean): GradientDrawable =
+        rounded(if (focused) Color.rgb(242,242,244) else Color.TRANSPARENT, 19, Color.TRANSPARENT, 0)
 
     private fun hideSystemBars() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -1072,11 +1371,11 @@ class NativeHomeActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_PROFILE_SELECTED = "cineflow.profile.selected"
-        private val INK = Color.rgb(7, 8, 11)
-        private val RAIL = Color.rgb(11, 13, 18)
-        private val CARD = Color.rgb(18, 20, 26)
-        private val CREAM = Color.rgb(242, 235, 221)
-        private val CORAL = Color.rgb(255, 77, 61)
+        private val INK = Color.rgb(5, 5, 7)
+        private val RAIL = Color.rgb(10, 10, 12)
+        private val CARD = Color.rgb(18, 18, 20)
+        private val CREAM = Color.rgb(245, 245, 247)
+        private val CORAL = Color.rgb(245, 245, 247)
         private val MINT = Color.rgb(145, 227, 207)
     }
 }

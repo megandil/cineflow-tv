@@ -37,20 +37,22 @@ class NativeSettingsActivity : AppCompatActivity() {
         val scroll = ScrollView(this).apply { isFillViewport = true; overScrollMode = View.OVER_SCROLL_NEVER }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(54), dp(26), dp(54), dp(30))
+            setPadding(dp(80), dp(28), dp(80), dp(30))
+            clipChildren = false
+            clipToPadding = false
         }
         content.addView(TextView(this).apply {
-            text = "CINEFLOW / AJUSTES"
+            text = "CINEFLOW"
             setTextColor(CORAL)
-            textSize = 9f
-            letterSpacing = .2f
+            textSize = 10f
+            letterSpacing = .08f
             typeface = Typeface.DEFAULT_BOLD
         })
         content.addView(TextView(this).apply {
             text = "Ajustes"
             setTextColor(CREAM)
-            textSize = 30f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            textSize = 34f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, dp(5), 0, dp(3))
         })
         content.addView(TextView(this).apply {
@@ -79,23 +81,27 @@ class NativeSettingsActivity : AppCompatActivity() {
             isFocusable = true
             isFocusableInTouchMode = true
             isClickable = true
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(86)).apply { bottomMargin = dp(9) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(76)).apply { bottomMargin = dp(8) }
             setOnClickListener {
                 startActivity(Intent(this@NativeSettingsActivity, NativeSettingsSectionActivity::class.java)
                     .putExtra(NativeSettingsSectionActivity.EXTRA_SECTION, section))
             }
             onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                v.background = rounded(if (has) Color.rgb(40,43,52) else CARD, 11, if (has) CORAL else BORDER, if (has) 2 else 1)
+                v.background = rounded(if (has) Color.rgb(38,38,42) else CARD, 10, if (has) Color.WHITE else BORDER, if (has) 2 else 1)
+                v.animate().scaleX(if (has) 1.02f else 1f).scaleY(if (has) 1.02f else 1f)
+                    .setDuration(180L)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(0.3f))
+                    .start()
             }
         }
         val icon = ImageView(this).apply {
             setImageResource(iconRes)
             setColorFilter(CORAL)
-            layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply { rightMargin = dp(16) }
+            layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { rightMargin = dp(14) }
         }
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        info.addView(TextView(this).apply { text = title; setTextColor(CREAM); textSize = 16f; typeface = Typeface.create("serif", Typeface.BOLD) })
-        info.addView(TextView(this).apply { text = desc; setTextColor(Color.rgb(155,160,170)); textSize = 9f; setPadding(0, dp(3), 0, 0) })
+        info.addView(TextView(this).apply { text = title; setTextColor(CREAM); textSize = 15f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL) })
+        info.addView(TextView(this).apply { text = desc; setTextColor(Color.rgb(155,160,170)); textSize = 10.5f; setPadding(0, dp(3), 0, 0) })
         row.addView(icon)
         row.addView(info, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         content.addView(row)
@@ -110,28 +116,32 @@ class NativeSettingsActivity : AppCompatActivity() {
             isFocusable = true
             isFocusableInTouchMode = true
             isClickable = true
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(86)).apply { bottomMargin = dp(9) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(76)).apply { bottomMargin = dp(8) }
             setOnClickListener { UpdateManager.checkAndPrompt(this@NativeSettingsActivity, manual = true) }
             onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                v.background = rounded(if (has) Color.rgb(40,43,52) else CARD, 11, if (has) CORAL else BORDER, if (has) 2 else 1)
+                v.background = rounded(if (has) Color.rgb(38,38,42) else CARD, 10, if (has) Color.WHITE else BORDER, if (has) 2 else 1)
+                v.animate().scaleX(if (has) 1.02f else 1f).scaleY(if (has) 1.02f else 1f)
+                    .setDuration(180L)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(0.3f))
+                    .start()
             }
         }
         val icon = ImageView(this).apply {
             setImageResource(R.drawable.ic_cf_update)
             setColorFilter(CORAL)
-            layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply { rightMargin = dp(16) }
+            layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { rightMargin = dp(14) }
         }
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         info.addView(TextView(this).apply {
             text = "Buscar actualizaciones"
             setTextColor(CREAM)
-            textSize = 16f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            textSize = 15f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         })
         info.addView(TextView(this).apply {
             text = "Comprueba si hay una versión nueva de CineFlow."
             setTextColor(Color.rgb(155,160,170))
-            textSize = 9f
+            textSize = 10.5f
             setPadding(0, dp(3), 0, 0)
         })
         row.addView(icon)
@@ -157,10 +167,10 @@ class NativeSettingsActivity : AppCompatActivity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
-        private val INK = Color.rgb(7,8,11)
-        private val CARD = Color.rgb(18,20,26)
+        private val INK = Color.rgb(5,5,7)
+        private val CARD = Color.rgb(18,18,20)
         private val BORDER = Color.rgb(48,51,60)
-        private val CREAM = Color.rgb(242,235,221)
-        private val CORAL = Color.rgb(255,77,61)
+        private val CREAM = Color.rgb(245,245,247)
+        private val CORAL = Color.rgb(245,245,247)
     }
 }

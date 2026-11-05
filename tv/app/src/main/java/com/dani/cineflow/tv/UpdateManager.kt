@@ -132,13 +132,13 @@ object UpdateManager {
         val card = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(activity, 30), dp(activity, 26), dp(activity, 30), dp(activity, 22))
-            background = rounded(activity, Color.rgb(18, 20, 26), 16, Color.rgb(60, 63, 74), 1)
+            background = rounded(activity, Color.rgb(18, 18, 20), 16, Color.rgb(60, 63, 74), 1)
         }
         card.addView(TextView(activity).apply {
             text = "Nueva versión de CineFlow"
-            setTextColor(Color.rgb(242, 235, 221))
+            setTextColor(Color.rgb(245, 245, 247))
             textSize = 23f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
         })
         card.addView(TextView(activity).apply {
             text = "Instalada ${CineFlowVersion.name(activity)}  ·  Disponible ${release.version}"
@@ -283,7 +283,7 @@ object UpdateManager {
 
     private fun button(activity: Activity, text: String, filled: Boolean): TextView = TextView(activity).apply {
         this.text = text
-        setTextColor(if (filled) Color.rgb(12, 13, 16) else Color.rgb(242, 235, 221))
+        setTextColor(if (filled) Color.rgb(12, 13, 16) else Color.rgb(245, 245, 247))
         textSize = 9f
         typeface = Typeface.DEFAULT_BOLD
         letterSpacing = .08f
@@ -291,11 +291,11 @@ object UpdateManager {
         isFocusable = true
         isFocusableInTouchMode = true
         isClickable = true
-        background = rounded(activity, if (filled) Color.rgb(255, 77, 61) else Color.rgb(28, 31, 38), 10,
-            if (filled) Color.rgb(255, 77, 61) else Color.rgb(55, 58, 68), 1)
+        background = rounded(activity, if (filled) Color.rgb(245, 245, 247) else Color.rgb(28, 31, 38), 10,
+            if (filled) Color.rgb(245, 245, 247) else Color.rgb(55, 58, 68), 1)
         onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-            v.background = rounded(activity, if (has) Color.WHITE else if (filled) Color.rgb(255, 77, 61) else Color.rgb(28, 31, 38),
-                10, if (has) Color.WHITE else if (filled) Color.rgb(255, 77, 61) else Color.rgb(55, 58, 68), 1)
+            v.background = rounded(activity, if (has) Color.WHITE else if (filled) Color.rgb(245, 245, 247) else Color.rgb(28, 31, 38),
+                10, if (has) Color.WHITE else if (filled) Color.rgb(245, 245, 247) else Color.rgb(55, 58, 68), 1)
             v.animate().scaleX(if (has) 1.04f else 1f).scaleY(if (has) 1.04f else 1f).setDuration(120).start()
         }
     }

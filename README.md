@@ -32,13 +32,14 @@ La app no aloja contenido. Los catálogos, metadatos y proveedores vienen de los
 ## Funcionalidades
 
 ### Inicio
-- Interfaz cinematográfica con destacado, filas horizontales y tarjetas amplias.
+- Interfaz inspirada en Apple TV: hero a pantalla completa, tipografía sans y menú flotante de cristal.
+- Cartel/logo real del título y carrusel automático con transición suave.
 - Catálogos de **TMDB en español** cuando el addon está instalado.
 - Filas de **PeLis** para contenido en castellano.
 - **Continuar viendo** con episodio, temporada y progreso.
 - Sinopsis sobre la carátula al enfocar una tarjeta.
-- Reborde coral y animación suave al navegar con el mando.
-- Atajos a **Canales** y **Guía**.
+- Borde blanco, escala suave y flecha de “Ver todo” al final de cada fila.
+- Menú **TV** con acceso directo a Canales y Guía.
 
 ### Cuenta y addons
 - Vinculación mediante **QR de Stremio**.
@@ -57,11 +58,12 @@ La app no aloja contenido. Los catálogos, metadatos y proveedores vienen de los
 - Cambio de perfil desde **Ajustes → Cuenta → Cambiar de perfil**.
 - Borrado de perfiles con el botón **MENÚ** del mando.
 
-### Explorar
-- Cuadrícula de contenido con categorías de TMDB.
+### Buscar y catálogos
+- Buscador Apple TV con categorías integradas y filtro **Tendencias**.
 - Búsqueda explícita, sin autobúsqueda.
-- Resultados en español cuando TMDB está configurado en español.
-- Borde y sinopsis al enfocar una tarjeta.
+- Resultados y descripciones en español desde TMDB.
+- Rejilla de pósters con sinopsis al enfocar y botón **Ver más** al final.
+- Pantallas independientes de **Series** y **Películas** con catálogos extensos y paginación.
 
 ### Reproductor
 - **ExoPlayer** nativo.
@@ -71,9 +73,10 @@ La app no aloja contenido. Los catálogos, metadatos y proveedores vienen de los
 - Barra de progreso, reloj y tiempo restante.
 - Ajustes de calidad y audio por perfil.
 
-### En Directo
-- **Canales** con señales AceStream.
+### TV
+- **Canales** con señales AceStream y filtros por categoría.
 - **Guía EPG** con programación anterior, actual y siguiente.
+- Acceso directo desde el apartado TV del menú flotante.
 
 ### Actualizaciones
 - Comprobación automática de la última release de GitHub.
@@ -85,12 +88,12 @@ La app no aloja contenido. Los catálogos, metadatos y proveedores vienen de los
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/home.png" alt="Inicio" width="420"><br><sub><b>Inicio</b> · catálogos en español</sub></td>
-    <td align="center"><img src="docs/screenshots/focus.png" alt="Tarjeta enfocada" width="420"><br><sub><b>Foco</b> · borde y sinopsis</sub></td>
+    <td align="center"><img src="docs/screenshots/home.png" alt="Inicio" width="420"><br><sub><b>Inicio</b> · hero y filas con flecha</sub></td>
+    <td align="center"><img src="docs/screenshots/search.png" alt="Buscar" width="420"><br><sub><b>Buscar</b> · categorías y Tendencias</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/detail.png" alt="Ficha" width="420"><br><sub><b>Ficha</b> · temporadas y proveedores</sub></td>
-    <td align="center"><img src="docs/screenshots/profiles.png" alt="Perfiles" width="420"><br><sub><b>Perfiles</b> · historial y ajustes separados</sub></td>
+    <td align="center"><img src="docs/screenshots/catalog.png" alt="Series" width="420"><br><sub><b>Series</b> · catálogo en español</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/continue-menu.png" alt="Continuar viendo" width="420"><br><sub><b>Continuar viendo</b> · quitar con MENÚ</sub></td>
@@ -98,7 +101,7 @@ La app no aloja contenido. Los catálogos, metadatos y proveedores vienen de los
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/settings.png" alt="Ajustes" width="420"><br><sub><b>Ajustes</b> · ajustes por perfil</sub></td>
-    <td align="center"><img src="docs/screenshots/focus.png" alt="Foco" width="420"><br><sub><b>Navegación</b> · borde y sinopsis al enfocar</sub></td>
+    <td align="center"><img src="docs/screenshots/channels.png" alt="Canales" width="420"><br><sub><b>TV</b> · Canales y Guía</sub></td>
   </tr>
 </table>
 

@@ -86,10 +86,10 @@ class NativeSearchActivity : AppCompatActivity() {
         val root = FrameLayout(this).apply { setBackgroundColor(INK) }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(54), dp(24), dp(54), dp(22))
+            setPadding(dp(80), dp(26), dp(80), dp(22))
         }
         content.addView(TextView(this).apply {
-            text = "CINEFLOW / EXPLORAR"
+            text = "CINEFLOW"
             setTextColor(CORAL)
             textSize = 9f
             letterSpacing = .2f
@@ -99,7 +99,7 @@ class NativeSearchActivity : AppCompatActivity() {
             text = "Explorar"
             setTextColor(CREAM)
             textSize = 30f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, dp(4), 0, dp(8))
         })
         val searchRow = LinearLayout(this).apply {
@@ -161,7 +161,7 @@ class NativeSearchActivity : AppCompatActivity() {
         input.id = View.generateViewId()
         searchRow.addView(input, LinearLayout.LayoutParams(0, dp(48), 1f).apply { rightMargin = dp(8) })
         searchRow.addView(TextView(this).apply {
-            text = "BUSCAR"
+            text = "Buscar"
             setTextColor(Color.rgb(12,13,16))
             textSize = 9f
             typeface = Typeface.DEFAULT_BOLD
@@ -201,7 +201,7 @@ class NativeSearchActivity : AppCompatActivity() {
 
         adapter = ResultAdapter(emptyList())
         recycler = RecyclerView(this).apply {
-            layoutManager = GridLayoutManager(this@NativeSearchActivity, 4)
+            layoutManager = GridLayoutManager(this@NativeSearchActivity, 5)
             adapter = this@NativeSearchActivity.adapter
             setPadding(dp(6), dp(4), dp(6), dp(10))
             clipToPadding = false
@@ -243,7 +243,14 @@ class NativeSearchActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 categories = built
                 renderCategories()
-                val start = categories.firstOrNull { it.label.contains("POPULAR") } ?: categories.firstOrNull()
+                val mode = intent.getStringExtra(EXTRA_MODE)
+                val start = when (mode) {
+                    "series" -> categories.firstOrNull { it.type == "series" && it.label.contains("POPULAR") }
+                        ?: categories.firstOrNull { it.type == "series" }
+                    "movie" -> categories.firstOrNull { it.type == "movie" && it.label.contains("POPULAR") }
+                        ?: categories.firstOrNull { it.type == "movie" }
+                    else -> categories.firstOrNull { it.label.contains("POPULAR") }
+                } ?: categories.firstOrNull()
                 if (start != null) loadCategory(start) else showDefaults()
             }
         }
@@ -253,24 +260,33 @@ class NativeSearchActivity : AppCompatActivity() {
         categoryRow.removeAllViews()
         categoryViews.clear()
         for (category in categories) {
+            val shortLabel = when {
+                category.label.contains("ÚLTIMOS LANZAMIENTOS", true) && category.type == "series" -> "Nuevas series"
+                category.label.contains("ÚLTIMOS LANZAMIENTOS", true) -> "Novedades"
+                category.label.contains("TENDENCIAS", true) && category.type == "series" -> "Series en tendencia"
+                category.label.contains("TENDENCIAS", true) -> "Tendencias"
+                category.label.contains("POPULAR", true) && category.type == "series" -> "Series populares"
+                category.label.contains("POPULAR", true) -> "Populares"
+                else -> category.label
+            }
             val chip = TextView(this).apply {
-                text = category.label
-                setTextColor(Color.rgb(190,194,204))
-                textSize = 8f
-                letterSpacing = .08f
-                typeface = Typeface.DEFAULT_BOLD
+                text = shortLabel
+                setTextColor(Color.rgb(205,205,212))
+                textSize = 13f
+                letterSpacing = 0f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 gravity = Gravity.CENTER
+                val padH = resources.displayMetrics.density.toInt() * 12
                 isFocusable = true
                 isFocusableInTouchMode = true
                 isClickable = true
-                setPadding(dp(13), dp(7), dp(13), dp(7))
-                background = rounded(Color.rgb(20,22,28), 8, Color.rgb(58,61,72), 1)
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32)).apply { rightMargin = dp(7) }
+                setPadding(padH, dp(6), padH, dp(6))
+                background = rounded(Color.TRANSPARENT, 18, Color.TRANSPARENT, 0)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34)).apply { rightMargin = dp(6) }
                 setOnClickListener { loadCategory(category) }
                 onFocusChangeListener = View.OnFocusChangeListener { v, has ->
-                    v.background = rounded(if (has) Color.WHITE else Color.rgb(20,22,28), 8,
-                        if (has) Color.WHITE else Color.rgb(58,61,72), if (has) 2 else 1)
-                    (v as TextView).setTextColor(if (has) Color.rgb(12,13,16) else Color.rgb(190,194,204))
+                    v.background = rounded(if (has) Color.WHITE else Color.TRANSPARENT, 18, Color.TRANSPARENT, 0)
+                    (v as TextView).setTextColor(if (has) Color.rgb(10,10,12) else Color.rgb(205,205,212))
                 }
             }
             categoryViews.add(chip)
@@ -282,9 +298,8 @@ class NativeSearchActivity : AppCompatActivity() {
         val index = categories.indexOf(category)
         categoryViews.forEachIndexed { i, chip ->
             val active = i == index
-            chip.background = rounded(if (active) CORAL else Color.rgb(20,22,28), 8,
-                if (active) CORAL else Color.rgb(58,61,72), 1)
-            chip.setTextColor(if (active) Color.rgb(12,13,16) else Color.rgb(190,194,204))
+            chip.background = rounded(if (active) Color.WHITE else Color.TRANSPARENT, 18, Color.TRANSPARENT, 0)
+            chip.setTextColor(if (active) Color.rgb(10,10,12) else Color.rgb(205,205,212))
         }
     }
 
@@ -292,7 +307,7 @@ class NativeSearchActivity : AppCompatActivity() {
         markCategory(category)
         generation++
         val gen = generation
-        status.text = "CARGANDO · ${category.label}"
+        status.text = "Cargando · ${category.label}"
         thread(name = "cineflow-explore-category", isDaemon = true) {
             val items = fetchJson(category.url, category.type)
             runOnUiThread {
@@ -437,14 +452,16 @@ class NativeSearchActivity : AppCompatActivity() {
                 isFocusable = true
                 isFocusableInTouchMode = true
                 isClickable = true
-                setPadding(dp(5), dp(5), dp(5), dp(5))
-                layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(158)).apply { setMargins(dp(3), dp(4), dp(3), dp(4)) }
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+                clipChildren = false
+                clipToPadding = false
+                layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(292)).apply { setMargins(dp(5), dp(6), dp(5), dp(6)) }
             }
             val art = FrameLayout(this@NativeSearchActivity).apply {
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(108))
-                background = rounded(CARD, 12, BORDER, 1)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(250))
+                background = rounded(CARD, 8, Color.TRANSPARENT, 0)
                 clipToOutline = true
-                outlineProvider = roundedOutline(dp(12))
+                outlineProvider = roundedOutline(dp(8))
             }
             val image = ImageView(this@NativeSearchActivity).apply {
                 scaleType = ImageView.ScaleType.CENTER_CROP
@@ -452,7 +469,7 @@ class NativeSearchActivity : AppCompatActivity() {
             }
             art.addView(image)
             val desc = TextView(this@NativeSearchActivity).apply {
-                setTextColor(Color.rgb(242,235,221))
+                setTextColor(Color.rgb(245,245,247))
                 textSize = 7.2f
                 maxLines = 3
                 ellipsize = TextUtils.TruncateAt.END
@@ -464,8 +481,8 @@ class NativeSearchActivity : AppCompatActivity() {
             art.addView(desc)
             val name = TextView(this@NativeSearchActivity).apply {
                 setTextColor(CREAM)
-                textSize = 10.5f
-                typeface = Typeface.DEFAULT_BOLD
+                textSize = 13f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
                 setPadding(dp(4), dp(6), dp(4), 0)
@@ -488,14 +505,17 @@ class NativeSearchActivity : AppCompatActivity() {
             holder.sub.text = listOfNotNull(meta.releaseInfo, meta.rating?.let { "★ $it" }).joinToString("  ·  ")
             holder.desc.text = meta.description.orEmpty()
             holder.desc.visibility = View.GONE
-            NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 3)
+            NativeImageLoader.load(holder.image, meta.background ?: meta.poster, 1)
             holder.card.background = rounded(Color.TRANSPARENT, 12, Color.TRANSPARENT, 0)
             holder.card.onFocusChangeListener = View.OnFocusChangeListener { v, has ->
                 holder.card.background = rounded(if (has) Color.rgb(31,20,21) else Color.TRANSPARENT, 12,
                     if (has) CORAL else Color.TRANSPARENT, if (has) 2 else 0)
                 holder.desc.visibility = if (has && holder.desc.text.isNotBlank()) View.VISIBLE else View.GONE
                 holder.name.setTextColor(if (has) Color.WHITE else CREAM)
-                v.animate().scaleX(if (has) 1.035f else 1f).scaleY(if (has) 1.035f else 1f).setDuration(120).start()
+                v.animate().scaleX(if (has) 1.045f else 1f).scaleY(if (has) 1.045f else 1f)
+                    .setDuration(190L)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(0.35f))
+                    .start()
             }
             holder.card.setOnClickListener {
                 startActivity(Intent(this@NativeSearchActivity, NativeDetailActivity::class.java)
@@ -532,7 +552,7 @@ class NativeSearchActivity : AppCompatActivity() {
 
     private fun fieldBackground(): android.graphics.drawable.StateListDrawable {
         val focused = rounded(Color.rgb(24,26,33), 10, CORAL, 2)
-        val normal = rounded(Color.rgb(18,20,26), 10, BORDER, 1)
+        val normal = rounded(Color.rgb(18,18,20), 10, BORDER, 1)
         return android.graphics.drawable.StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), focused)
             addState(intArrayOf(), normal)
@@ -578,10 +598,11 @@ class NativeSearchActivity : AppCompatActivity() {
         const val EXTRA_CATALOG_URL = "cineflow.catalog.url"
         const val EXTRA_CATALOG_TITLE = "cineflow.catalog.title"
         const val EXTRA_CATALOG_TYPE = "cineflow.catalog.type"
-        private val INK = Color.rgb(7,8,11)
-        private val CARD = Color.rgb(18,20,26)
+        const val EXTRA_MODE = "cineflow.explore.mode"
+        private val INK = Color.rgb(5,5,7)
+        private val CARD = Color.rgb(18,18,20)
         private val BORDER = Color.rgb(48,51,60)
-        private val CREAM = Color.rgb(242,235,221)
-        private val CORAL = Color.rgb(255,77,61)
+        private val CREAM = Color.rgb(245,245,247)
+        private val CORAL = Color.rgb(245,245,247)
     }
 }

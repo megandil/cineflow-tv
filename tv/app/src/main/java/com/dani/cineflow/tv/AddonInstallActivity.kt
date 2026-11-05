@@ -63,7 +63,7 @@ class AddonInstallActivity : AppCompatActivity() {
             text = "Instalar addon"
             setTextColor(CREAM)
             textSize = 30f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, dp(5), 0, dp(4))
         })
         content.addView(TextView(this).apply {
@@ -80,7 +80,7 @@ class AddonInstallActivity : AppCompatActivity() {
             setSingleLine(true)
             imeOptions = EditorInfo.IME_ACTION_DONE
             setPadding(dp(16), 0, dp(16), 0)
-            background = rounded(Color.rgb(18,20,26), 10, BORDER, 1)
+            background = rounded(Color.rgb(18,18,20), 10, BORDER, 1)
             isFocusable = true
             isFocusableInTouchMode = true
             setOnEditorActionListener { _, actionId, _ ->
@@ -173,11 +173,11 @@ class AddonInstallActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_URL = "cineflow.addon.url"
-        private val INK = Color.rgb(7,8,11)
-        private val CARD = Color.rgb(18,20,26)
+        private val INK = Color.rgb(5,5,7)
+        private val CARD = Color.rgb(18,18,20)
         private val BORDER = Color.rgb(48,51,60)
-        private val CREAM = Color.rgb(242,235,221)
-        private val CORAL = Color.rgb(255,77,61)
+        private val CREAM = Color.rgb(245,245,247)
+        private val CORAL = Color.rgb(245,245,247)
         private val MINT = Color.rgb(145,227,207)
     }
 }

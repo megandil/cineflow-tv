@@ -673,11 +673,11 @@ class GuideActivity : AppCompatActivity() {
     }
 
     companion object {
-        private val BG = Color.rgb(10, 10, 11)
-        private val CARD = Color.rgb(23, 23, 25)
+        private val BG = Color.rgb(5, 5, 7)
+        private val CARD = Color.rgb(18, 18, 20)
         private val BORDER = Color.rgb(48, 48, 52)
         private val MUTED = Color.rgb(163, 163, 170)
-        private val ACCENT = Color.rgb(229, 9, 20)
+        private val ACCENT = Color.rgb(245, 245, 247)
         private val PROGRAM = Color.rgb(167, 218, 184)
         private val CATEGORY_PRIORITY = listOf("La Liga", "Liga de Campeones", "Fútbol")
         private const val EPG_URL = "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml.gz"

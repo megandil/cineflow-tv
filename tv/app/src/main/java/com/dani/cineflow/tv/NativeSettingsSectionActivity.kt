@@ -57,7 +57,7 @@ class NativeSettingsSectionActivity : AppCompatActivity() {
             text = titles[section] ?: "Ajustes"
             setTextColor(CREAM)
             textSize = 29f
-            typeface = Typeface.create("serif", Typeface.BOLD)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setPadding(0, dp(5), 0, dp(12))
         })
         scroll.addView(content)
@@ -221,11 +221,11 @@ class NativeSettingsSectionActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_SECTION = "cineflow.settings.section"
-        private val INK = Color.rgb(7,8,11)
-        private val CARD = Color.rgb(18,20,26)
+        private val INK = Color.rgb(5,5,7)
+        private val CARD = Color.rgb(18,18,20)
         private val BORDER = Color.rgb(48,51,60)
-        private val CREAM = Color.rgb(242,235,221)
-        private val CORAL = Color.rgb(255,77,61)
+        private val CREAM = Color.rgb(245,245,247)
+        private val CORAL = Color.rgb(245,245,247)
         private val MINT = Color.rgb(145,227,207)
     }
 }
